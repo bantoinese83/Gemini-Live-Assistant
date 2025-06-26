@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -129,6 +128,8 @@
       position: relative;
       display: grid;
       place-items: center;
+      box-shadow: 0 4px 32px 0 #14b8a655, 0 0 0 4px #38bdf855;
+      filter: drop-shadow(0 0 8px #38bdf8cc);
     }
      @media (min-width: 640px) { /* sm breakpoint */
       .ai-bot {
@@ -228,6 +229,22 @@
     }
 
     * { box-sizing: border-box; }
+
+    /* Add fade-in animation for transcript bubbles */
+    .fade-in { animation: fadeIn 0.4s cubic-bezier(.4,2,.6,1); }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+    /* StatusDisplay animated styles */
+    .animate-pulse-slow { animation: pulse 2.2s cubic-bezier(.4,0,.6,1) infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+    .animate-glow { animation: glow 1.2s ease-in-out infinite alternate; }
+    @keyframes glow { from { text-shadow: 0 0 8px #f87171, 0 0 16px #f87171; } to { text-shadow: 0 0 16px #f87171, 0 0 32px #f87171; } }
+    .animate-wave1 { animation: waveBar 1.1s -0.2s infinite cubic-bezier(.4,0,.6,1) alternate; }
+    .animate-wave2 { animation: waveBar 0.9s -0.1s infinite cubic-bezier(.4,0,.6,1) alternate; }
+    .animate-wave3 { animation: waveBar 1.3s 0s infinite cubic-bezier(.4,0,.6,1) alternate; }
+    .animate-wave4 { animation: waveBar 1.0s -0.15s infinite cubic-bezier(.4,0,.6,1) alternate; }
+    .animate-wave5 { animation: waveBar 1.2s -0.05s infinite cubic-bezier(.4,0,.6,1) alternate; }
+    @keyframes waveBar { 0% { height: 0.5rem; } 50% { height: 1.25rem; } 100% { height: 0.5rem; } }
   </style>
 <script type="importmap">
 {

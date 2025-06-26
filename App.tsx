@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import useGeminiLive from './hooks/useGeminiLive';
 import ControlPanel from './components/ControlPanel';
@@ -12,6 +11,7 @@ import SystemInstructionInput from './components/SystemInstructionInput';
 import AIBotVisualizer from './components/AIBotVisualizer';
 import { DEFAULT_SYSTEM_INSTRUCTION, AI_SPEAKING_RESET_DELAY_MS } from './constants';
 import { TRANSITION_MEDIUM, BORDER_RADIUS_LG } from './theme';
+import { AI_PERSONA_PRESETS } from './types';
 
 /**
  * The main application component.
@@ -19,8 +19,11 @@ import { TRANSITION_MEDIUM, BORDER_RADIUS_LG } from './theme';
  * and integrates the `useGeminiLive` hook for AI interaction.
  */
 const App: React.FC = () => {
-  // Local UI state for system instruction and video toggle preference
-  const [systemInstruction, setSystemInstruction] = useState<string>(DEFAULT_SYSTEM_INSTRUCTION);
+  // Persona-aware system instruction
+  const [systemInstruction, setSystemInstruction] = useState<string>(() => {
+    const initialPersona = AI_PERSONA_PRESETS[0];
+    return initialPersona.systemInstruction;
+  });
   const [localIsVideoEnabled, setLocalIsVideoEnabled] = useState<boolean>(true);
 
   // Core AI interaction logic and state from the custom hook
@@ -42,10 +45,28 @@ const App: React.FC = () => {
     modelTranscript,
     modelTranscriptIsFinal,
     setVideoTrackEnabled,
+    inputAudioContext,
   } = useGeminiLive(systemInstruction); // Pass current system instruction to the hook
 
   // State to track if the AI is currently speaking, used for the AIBotVisualizer
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
+
+  // AI Persona selection state
+  const [selectedPersonaId, setSelectedPersonaId] = useState<string>(AI_PERSONA_PRESETS[0].id);
+  // Track the last persona's default instruction for comparison
+  const lastPersonaDefaultRef = React.useRef(systemInstruction);
+  const handlePersonaChange = (personaId: string) => {
+    const newPersona = AI_PERSONA_PRESETS.find(p => p.id === personaId);
+    if (!newPersona) return;
+    // If the current instruction matches the last persona's default, update to new persona's default
+    const prevPersona = AI_PERSONA_PRESETS.find(p => p.id === selectedPersonaId);
+    const prevDefault = prevPersona ? prevPersona.systemInstruction : '';
+    if (systemInstruction.trim() === prevDefault.trim()) {
+      setSystemInstruction(newPersona.systemInstruction);
+      lastPersonaDefaultRef.current = newPersona.systemInstruction;
+    }
+    setSelectedPersonaId(personaId);
+  };
 
   // Effect to manage AI speaking state for bot visualizer based on model transcript activity.
   useEffect(() => {
@@ -96,12 +117,12 @@ const App: React.FC = () => {
    */
   const handleSystemInstructionSet = useCallback((newInstruction: string) => {
     if (isRecording) {
-      // In a real app, use a more user-friendly notification system (e.g., a toast).
       alert("Please stop recording before changing the system instruction. Changes will apply on the next session start or reset.");
       return;
     }
     setSystemInstruction(newInstruction);
-  }, [isRecording]); // Dependency: isRecording to prevent changes during active session.
+    lastPersonaDefaultRef.current = newInstruction;
+  }, [isRecording]);
 
   // Memoized initial loading UI
   const loadingScreen = useMemo(() => (
@@ -116,7 +137,13 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen bg-[var(--color-background-primary)] text-[var(--color-text-primary)] overflow-hidden">
+    <div className="flex flex-col lg:flex-row h-screen bg-[var(--color-background-primary)] text-[var(--color-text-primary)] overflow-hidden fade-in">
+      {/* Error Banner */}
+      {errorMessage && (
+        <div className="fixed top-0 left-0 w-full z-50 bg-red-600 text-white text-center py-2 shadow-lg animate-pulse">
+          <span className="font-semibold">Error:</span> {errorMessage}
+        </div>
+      )}
       {/* Sidebar / Control Area */}
       <aside className={`w-full lg:w-80 xl:w-96 bg-[var(--color-background-secondary)] p-3 sm:p-4 shadow-lg flex-shrink-0 lg:h-full lg:overflow-y-auto space-y-4 ${TRANSITION_MEDIUM} border-r border-[var(--color-border-primary)]`}>
         <h1 className="text-2xl sm:text-3xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-[var(--color-accent-teal)] to-[var(--color-accent-sky)] pt-1 pb-2 mb-1 sm:mb-2">
@@ -141,10 +168,12 @@ const App: React.FC = () => {
               onStopRecording={handleStopRecording}
               onResetSession={handleResetSession}
               onToggleVideo={handleToggleVideo}
+              selectedPersonaId={selectedPersonaId}
+              onPersonaChange={handlePersonaChange}
             />
             <div className="space-y-3 pt-2 border-t border-[var(--color-border-primary)] mt-3">
-              <VolumeControl label="Input (Mic)" gainNode={inputGainNode} initialVolume={1.0} />
-              <VolumeControl label="Output (AI Voice)" gainNode={outputGainNode} initialVolume={0.7} />
+              <VolumeControl label="Input (Mic)" gainNode={inputGainNode} initialVolume={1.0} audioContext={inputAudioContext} />
+              <VolumeControl label="Output (AI Voice)" gainNode={outputGainNode} initialVolume={0.7} audioContext={outputAudioContext} />
             </div>
              <div className="pt-2 mt-auto"> {/* Push StatusDisplay to bottom of sidebar */}
                 <StatusDisplay statusMessage={statusMessage} errorMessage={errorMessage} />
