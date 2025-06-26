@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { GeminiLiveAI } from '../services/geminiLiveService';
 import { USER_TRANSCRIPT_THROTTLE_MS, MODEL_TRANSCRIPT_THROTTLE_MS, DEFAULT_SYSTEM_INSTRUCTION } from '../constants';
@@ -48,6 +47,10 @@ const useGeminiLive = (systemInstruction: string = DEFAULT_SYSTEM_INSTRUCTION): 
   // if the throttled update would set the same text that's already displayed.
   const currentDisplayedUserTranscriptRef = useRef<string>('');
   const currentDisplayedModelTranscriptRef = useRef<string>('');
+
+  // Add buffer refs for accumulating fragments
+  const userTranscriptBufferRef = useRef<string>('');
+  const modelTranscriptBufferRef = useRef<string>('');
 
   // Effect to track component mount status
   useEffect(() => {
@@ -107,46 +110,48 @@ const useGeminiLive = (systemInstruction: string = DEFAULT_SYSTEM_INSTRUCTION): 
         if (!isMountedRef.current) return;
         if (userTranscriptThrottleTimeoutRef.current) clearTimeout(userTranscriptThrottleTimeoutRef.current);
         
-        if (isFinal) {
-          setUserTranscript(transcript);
-          setUserTranscriptIsFinal(true);
-          latestInterimUserTranscriptRef.current = ''; // Clear interim cache on final
-        } else {
-          latestInterimUserTranscriptRef.current = transcript;
-          setUserTranscriptIsFinal(false);
-          // Update immediately if no timeout is pending or if the transcript is different from current display
-          if (currentDisplayedUserTranscriptRef.current !== transcript) {
-            setUserTranscript(transcript); // Show interim update quickly
+        // DEBUG LOGGING
+        console.log('[USER TRANSCRIPT]', { transcript, isFinal, prev: currentDisplayedUserTranscriptRef.current });
+        
+        // Accumulate fragments in buffer
+        if (!isFinal) {
+          // Only append if not already at the end
+          if (!userTranscriptBufferRef.current.endsWith(transcript)) {
+            userTranscriptBufferRef.current += transcript;
           }
-          // Set a timeout to display the latest interim transcript after the throttle period
-          userTranscriptThrottleTimeoutRef.current = window.setTimeout(() => {
-            if (isMountedRef.current && currentDisplayedUserTranscriptRef.current !== latestInterimUserTranscriptRef.current) {
-              setUserTranscript(latestInterimUserTranscriptRef.current);
-            }
-            userTranscriptThrottleTimeoutRef.current = null; // Clear timeout ref
-          }, USER_TRANSCRIPT_THROTTLE_MS);
+          setUserTranscript(userTranscriptBufferRef.current);
+          setUserTranscriptIsFinal(false);
+        } else {
+          // On final, set transcript and reset buffer
+          if (!userTranscriptBufferRef.current.endsWith(transcript)) {
+            userTranscriptBufferRef.current += transcript;
+          }
+          setUserTranscript(userTranscriptBufferRef.current);
+          setUserTranscriptIsFinal(true);
+          userTranscriptBufferRef.current = '';
         }
       },
       onModelTranscriptUpdate: (transcript, isFinal) => {
         if (!isMountedRef.current) return;
         if (modelTranscriptThrottleTimeoutRef.current) clearTimeout(modelTranscriptThrottleTimeoutRef.current);
 
-        if (isFinal) {
-          setModelTranscript(transcript);
-          setModelTranscriptIsFinal(true);
-          latestInterimModelTranscriptRef.current = ''; // Clear interim cache
-        } else {
-          latestInterimModelTranscriptRef.current = transcript;
-          setModelTranscriptIsFinal(false);
-          if (currentDisplayedModelTranscriptRef.current !== transcript) {
-            setModelTranscript(transcript); // Show interim quickly
+        // DEBUG LOGGING
+        console.log('[MODEL TRANSCRIPT]', { transcript, isFinal, prev: currentDisplayedModelTranscriptRef.current });
+
+        // Accumulate fragments in buffer
+        if (!isFinal) {
+          if (!modelTranscriptBufferRef.current.endsWith(transcript)) {
+            modelTranscriptBufferRef.current += transcript;
           }
-          modelTranscriptThrottleTimeoutRef.current = window.setTimeout(() => {
-            if (isMountedRef.current && currentDisplayedModelTranscriptRef.current !== latestInterimModelTranscriptRef.current) {
-              setModelTranscript(latestInterimModelTranscriptRef.current);
-            }
-            modelTranscriptThrottleTimeoutRef.current = null; // Clear timeout ref
-          }, MODEL_TRANSCRIPT_THROTTLE_MS);
+          setModelTranscript(modelTranscriptBufferRef.current);
+          setModelTranscriptIsFinal(false);
+        } else {
+          if (!modelTranscriptBufferRef.current.endsWith(transcript)) {
+            modelTranscriptBufferRef.current += transcript;
+          }
+          setModelTranscript(modelTranscriptBufferRef.current);
+          setModelTranscriptIsFinal(true);
+          modelTranscriptBufferRef.current = '';
         }
       },
       onMediaStreamAvailable: (stream) => { 
