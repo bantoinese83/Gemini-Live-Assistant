@@ -80,43 +80,47 @@ const ControlPanel: React.FC<ControlPanelProps> = React.memo(({
     <div className="space-y-5 p-4 bg-[var(--color-background-secondary)] rounded-2xl shadow-2xl border border-[var(--color-border-primary)] max-w-md mx-auto transition-all duration-300">
       {renderPersonaPicker()}
       <hr className="my-2 border-[var(--color-border-primary)] opacity-40" />
-      <div className="grid grid-cols-2 gap-4">
+      <div className="w-full">
         <Button
           {...commonButtonProps}
-          variant="success"
-          onClick={onStartRecording}
-          disabled={isRecording || isDisabledBySystem}
-          leftIcon={<PlayIcon {...iconProps} />}
-          aria-label="Start Recording"
+          variant={isRecording ? 'danger' : 'success'}
+          onClick={isRecording ? onStopRecording : onStartRecording}
+          disabled={isDisabledBySystem || (isRecording ? false : isRecording)}
+          leftIcon={isRecording ? <StopIcon {...iconProps} /> : <PlayIcon {...iconProps} />}
+          aria-label={isRecording ? 'Stop Recording' : 'Start Recording'}
           aria-pressed={isRecording}
           className="w-full transition-transform duration-150 hover:scale-105 focus:scale-105 shadow-md"
         >
-          Start
-        </Button>
-        <Button
-          {...commonButtonProps}
-          variant="danger"
-          onClick={onStopRecording}
-          disabled={!isRecording || isDisabledBySystem}
-          leftIcon={<StopIcon {...iconProps} />}
-          aria-label="Stop Recording"
-          className="w-full transition-transform duration-150 hover:scale-105 focus:scale-105 shadow-md"
-        >
-          Stop
+          {isRecording ? 'Stop' : 'Start'}
         </Button>
       </div>
-      <Button
-        {...commonButtonProps}
-        variant={isVideoEnabled ? 'primary' : 'secondary'}
-        onClick={() => onToggleVideo(!isVideoEnabled)}
-        disabled={isDisabledBySystem}
-        leftIcon={isVideoEnabled ? <VideoOnIcon {...iconProps} /> : <VideoOffIcon {...iconProps} />}
-        aria-pressed={isVideoEnabled}
-        aria-label={isVideoEnabled ? "Turn Video Off" : "Turn Video On"}
-        className="w-full transition-transform duration-150 hover:scale-105 focus:scale-105 shadow-md"
-      >
-        {isVideoEnabled ? 'Video On' : 'Video Off'}
-      </Button>
+      <div className="flex items-center justify-between w-full py-2">
+        <span className="font-medium text-sm text-[var(--color-text-primary)] select-none">
+          {isVideoEnabled ? 'Video On' : 'Video Off'}
+        </span>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={isVideoEnabled}
+          tabIndex={0}
+          disabled={isDisabledBySystem}
+          onClick={() => onToggleVideo(!isVideoEnabled)}
+          className={`relative inline-flex h-9 w-16 rounded-full border-2 border-[var(--color-border-primary)] transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-accent-500/70 shadow-md
+            ${isVideoEnabled ? 'bg-[var(--color-accent-teal)]' : 'bg-[var(--color-background-tertiary)]'}
+            ${isDisabledBySystem ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+        >
+          <span
+            className={`absolute left-1 top-1 flex items-center justify-center h-7 w-7 rounded-full bg-white shadow-lg transition-transform duration-300
+              ${isVideoEnabled ? 'translate-x-7' : 'translate-x-0'}`}
+          >
+            {isVideoEnabled ? (
+              <VideoOnIcon size={22} className="text-[var(--color-accent-teal)] transition-colors duration-300" />
+            ) : (
+              <VideoOffIcon size={22} className="text-slate-400 transition-colors duration-300" />
+            )}
+          </span>
+        </button>
+      </div>
       <Button
         {...commonButtonProps}
         variant="warning"
