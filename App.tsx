@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import useGeminiLive from './hooks/useGeminiLive';
 import ControlPanel from './components/ControlPanel';
 import TranscriptDisplay from './components/TranscriptDisplay';
@@ -12,6 +12,15 @@ import AIBotVisualizer from './components/AIBotVisualizer';
 import { DEFAULT_SYSTEM_INSTRUCTION, AI_SPEAKING_RESET_DELAY_MS } from './constants';
 import { TRANSITION_MEDIUM, BORDER_RADIUS_LG } from './theme';
 import { AI_PERSONA_PRESETS } from './types';
+import {
+  createSession,
+  addTranscript,
+  uploadSessionVideo,
+  getSession,
+  getTranscripts,
+} from './services/sessionStorageService';
+import { supabase } from './services/supabaseClient';
+import type { SupabaseSession, SupabaseTranscript } from './types';
 
 /**
  * The main application component.
@@ -25,6 +34,7 @@ const App: React.FC = () => {
     return initialPersona.systemInstruction;
   });
   const [localIsVideoEnabled, setLocalIsVideoEnabled] = useState<boolean>(true);
+  const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
 
   // Core AI interaction logic and state from the custom hook
   const {
@@ -35,7 +45,6 @@ const App: React.FC = () => {
     inputGainNode,
     outputAudioContext,
     outputGainNode,
-    mediaStream,
     apiKeyMissing,
     startRecording,
     stopRecording,
@@ -86,14 +95,158 @@ const App: React.FC = () => {
     return () => clearTimeout(timerId); // Cleanup timeout on unmount or dependency change.
   }, [modelTranscript, modelTranscriptIsFinal]);
 
-  /** Handles the start recording action. */
-  const handleStartRecording = useCallback(() => {
-    startRecording(localIsVideoEnabled); // Pass current local video preference
-  }, [startRecording, localIsVideoEnabled]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const sessionIdRef = useRef<string | null>(null);
+  const videoBlobRef = useRef<Blob | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
 
-  /** Handles the stop recording action. */
-  const handleStopRecording = useCallback(() => {
-    stopRecording();
+  const videoStreamRef = useRef<MediaStream | null>(null);
+  const combinedStreamRef = useRef<MediaStream | null>(null);
+
+  // Helper to get persona name
+  const getPersonaName = () => {
+    const persona = AI_PERSONA_PRESETS.find(p => p.id === selectedPersonaId);
+    return persona ? persona.name : 'Unknown';
+  };
+
+  // Helper to get combined audio+video stream and video-only stream
+  const getCombinedMediaStream = async () => {
+    // Get video and audio streams separately
+    const videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    const audioStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+    // Combine tracks
+    const combinedStream = new MediaStream([
+      ...videoStream.getVideoTracks(),
+      ...audioStream.getAudioTracks(),
+    ]);
+    return { combinedStream, videoStream };
+  };
+
+  // 1. On start recording, create a session in Supabase and start MediaRecorder
+  const handleStartRecording = useCallback(async () => {
+    setSaveError(null);
+    setIsSaving(true);
+    try {
+      const session = await createSession({
+        persona: getPersonaName(),
+        metadata: { systemInstruction },
+      });
+      sessionIdRef.current = session.id;
+      // Get combined and video-only streams
+      const { combinedStream, videoStream } = await getCombinedMediaStream();
+      combinedStreamRef.current = combinedStream;
+      videoStreamRef.current = videoStream;
+      // Show live preview
+      setLocalIsVideoEnabled(true); // ensure preview is enabled
+      setMediaStream(videoStream); // set for VideoPreview
+      // Start MediaRecorder with combined stream
+      recordedChunksRef.current = [];
+      let recorder;
+      try {
+        recorder = new MediaRecorder(combinedStream);
+      } catch (e) {
+        recorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm' });
+      }
+      mediaRecorderRef.current = recorder;
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) recordedChunksRef.current.push(event.data);
+      };
+      recorder.start();
+      startRecording(true); // always enable video for session
+    } catch (err: any) {
+      setSaveError('Failed to start session: ' + (err.message || err.toString()));
+    } finally {
+      setIsSaving(false);
+    }
+  }, [startRecording, systemInstruction, selectedPersonaId]);
+
+  // 2. On transcript update, save to Supabase
+  useEffect(() => {
+    if (!sessionIdRef.current || typeof sessionIdRef.current !== 'string') return;
+    const saveTranscripts = async () => {
+      try {
+        if (userTranscript) {
+          await addTranscript({
+            session_id: sessionIdRef.current as string,
+            speaker: 'user',
+            text: userTranscript,
+            is_final: userTranscriptIsFinal,
+            timestamp_ms: Date.now(),
+          });
+        }
+        if (modelTranscript) {
+          await addTranscript({
+            session_id: sessionIdRef.current as string,
+            speaker: 'ai',
+            text: modelTranscript,
+            is_final: modelTranscriptIsFinal,
+            timestamp_ms: Date.now(),
+          });
+        }
+      } catch (err: any) {
+        setSaveError('Failed to save transcript: ' + (err.message || err.toString()));
+      }
+    };
+    saveTranscripts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userTranscript, userTranscriptIsFinal, modelTranscript, modelTranscriptIsFinal]);
+
+  // 3. On stop recording, stop MediaRecorder, upload video, and update session
+  const handleStopRecording = useCallback(async () => {
+    setSaveError(null);
+    setIsSaving(true);
+    try {
+      stopRecording();
+      // Stop MediaRecorder and get the video blob
+      if (mediaRecorderRef.current) {
+        const recorder = mediaRecorderRef.current;
+        await new Promise<void>((resolve) => {
+          recorder.onstop = () => {
+            const blob = new Blob(recordedChunksRef.current, { type: recorder.mimeType });
+            videoBlobRef.current = blob;
+            // Log recorded chunks
+            console.log('Recorded video chunks:', recordedChunksRef.current.length, 'Blob size:', blob.size);
+            resolve();
+          };
+          recorder.stop();
+        });
+      }
+      // Upload video if available
+      const sessionId = sessionIdRef.current ?? '';
+      if (sessionId && videoBlobRef.current instanceof Blob) {
+        if (videoBlobRef.current.size === 0) {
+          setSaveError('No video was recorded or the video file is empty.');
+        } else {
+          try {
+            const { path } = await uploadSessionVideo(sessionId, videoBlobRef.current);
+            // Update session with video_url as the file path
+            await supabase.from('sessions').update({ video_url: path, ended_at: new Date().toISOString() }).eq('id', sessionId);
+          } catch (uploadErr: any) {
+            setSaveError('Failed to upload video: ' + (uploadErr.message || uploadErr.toString()));
+          }
+        }
+      }
+      sessionIdRef.current = null;
+      videoBlobRef.current = null;
+      mediaRecorderRef.current = null;
+      recordedChunksRef.current = [];
+      // Stop and clean up streams
+      if (videoStreamRef.current) {
+        videoStreamRef.current.getTracks().forEach(track => track.stop());
+        videoStreamRef.current = null;
+      }
+      if (combinedStreamRef.current) {
+        combinedStreamRef.current.getTracks().forEach(track => track.stop());
+        combinedStreamRef.current = null;
+      }
+      setMediaStream(null);
+    } catch (err: any) {
+      setSaveError('Failed to save video: ' + (err.message || err.toString()));
+    } finally {
+      setIsSaving(false);
+    }
   }, [stopRecording]);
 
   /** Handles the reset session action. */
@@ -132,6 +285,113 @@ const App: React.FC = () => {
     </div>
   ), [statusMessage]);
 
+  const [showHistory, setShowHistory] = useState(false);
+  const [sessions, setSessions] = useState<SupabaseSession[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [selectedSession, setSelectedSession] = useState<SupabaseSession | null>(null);
+  const [selectedTranscripts, setSelectedTranscripts] = useState<SupabaseTranscript[]>([]);
+  const [showPlayback, setShowPlayback] = useState(false);
+  const [playbackVideoUrl, setPlaybackVideoUrl] = useState<string | null>(null);
+
+  // Fetch session history on demand
+  const fetchHistory = async () => {
+    setHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      const { data, error } = await supabase.from('sessions').select('*').order('started_at', { ascending: false });
+      if (error) throw error;
+      setSessions(data || []);
+    } catch (err: any) {
+      setHistoryError('Failed to load session history: ' + (err.message || err.toString()));
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
+  // Handle session click for playback
+  const handleSessionClick = async (session: SupabaseSession) => {
+    setSelectedSession(session);
+    setShowPlayback(true);
+    setPlaybackVideoUrl(null);
+    try {
+      const transcripts = await getTranscripts(session.id);
+      setSelectedTranscripts(transcripts);
+      if (session.video_url) {
+        const { data, error } = await supabase.storage
+          .from('session-videos')
+          .createSignedUrl(session.video_url, 60 * 60);
+        if (error) {
+          setPlaybackVideoUrl(null);
+        } else {
+          setPlaybackVideoUrl(data?.signedUrl || null);
+        }
+      } else {
+        setPlaybackVideoUrl(null);
+      }
+    } catch (err: any) {
+      setSelectedTranscripts([]);
+      setPlaybackVideoUrl(null);
+    }
+  };
+
+  // UI for session history sidebar
+  const historySidebar = (
+    <aside className="fixed top-0 right-0 w-80 h-full bg-[var(--color-background-secondary)] shadow-2xl z-50 p-4 overflow-y-auto border-l border-[var(--color-border-primary)]">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-bold">Session History</h2>
+        <button onClick={() => setShowHistory(false)} className="text-lg font-bold px-2 py-1 rounded hover:bg-[var(--color-background-tertiary)]">×</button>
+      </div>
+      {historyLoading && <div className="text-center text-[var(--color-text-muted)]">Loading...</div>}
+      {historyError && <div className="text-red-400 text-center">{historyError}</div>}
+      <ul className="space-y-3">
+        {sessions.map(session => (
+          <li key={session.id} className="bg-[var(--color-background-tertiary)] rounded-lg p-3 shadow hover:shadow-lg transition cursor-pointer flex flex-col gap-1" onClick={() => handleSessionClick(session)}>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-accent-400">{session.persona}</span>
+              <span className="text-xs text-[var(--color-text-muted)]">{new Date(session.started_at).toLocaleString()}</span>
+            </div>
+            {session.video_url && <span className="text-xs text-green-400">🎥 Video</span>}
+          </li>
+        ))}
+      </ul>
+    </aside>
+  );
+
+  // UI for playback modal
+  const playbackModal = selectedSession && showPlayback && (
+    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
+      <div className="bg-[var(--color-background-secondary)] rounded-2xl shadow-2xl p-6 max-w-2xl w-full relative">
+        <button onClick={() => setShowPlayback(false)} className="absolute top-2 right-2 text-lg font-bold px-2 py-1 rounded hover:bg-[var(--color-background-tertiary)]">×</button>
+        <h3 className="text-xl font-bold mb-2">Session Playback</h3>
+        <div className="mb-4">
+          <div className="font-semibold text-accent-400">{selectedSession.persona}</div>
+          <div className="text-xs text-[var(--color-text-muted)]">{new Date(selectedSession.started_at).toLocaleString()}</div>
+        </div>
+        {selectedSession.video_url ? (
+          playbackVideoUrl ? (
+            <video src={playbackVideoUrl} controls className="w-full rounded-lg mb-4" />
+          ) : (
+            <div className="text-[var(--color-text-muted)] mb-4">Loading video...</div>
+          )
+        ) : (
+          <div className="text-[var(--color-text-muted)] mb-4">No video available for this session.</div>
+        )}
+        <div className="max-h-60 overflow-y-auto bg-[var(--color-background-tertiary)] rounded p-3">
+          <h4 className="font-semibold mb-2">Transcripts</h4>
+          <ul className="space-y-2">
+            {selectedTranscripts.map(t => (
+              <li key={t.id} className="text-sm">
+                <span className={t.speaker === 'user' ? 'text-sky-400' : 'text-accent-400'}>[{t.speaker}]</span> {t.text}
+                <span className="text-xs text-[var(--color-text-muted)] ml-2">{new Date(t.created_at).toLocaleTimeString()}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+  );
+
   if (!isInitialized && !apiKeyMissing) {
     return loadingScreen;
   }
@@ -146,9 +406,12 @@ const App: React.FC = () => {
       )}
       {/* Sidebar / Control Area */}
       <aside className={`w-full lg:w-80 xl:w-96 bg-[var(--color-background-secondary)] p-3 sm:p-4 shadow-lg flex-shrink-0 lg:h-full lg:overflow-y-auto space-y-4 ${TRANSITION_MEDIUM} border-r border-[var(--color-border-primary)]`}>
-        <h1 className="text-2xl sm:text-3xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-[var(--color-accent-teal)] to-[var(--color-accent-sky)] pt-1 pb-2 mb-1 sm:mb-2">
-          Gemini Live
-        </h1>
+        <div className="flex justify-between items-center mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-[var(--color-accent-teal)] to-[var(--color-accent-sky)] pt-1 pb-2 mb-1 sm:mb-2">
+            Gemini Live
+          </h1>
+          <button onClick={() => { setShowHistory(true); fetchHistory(); }} className="text-xs px-2 py-1 rounded bg-[var(--color-accent-sky)] text-white hover:bg-[var(--color-accent-sky-hover)]">History</button>
+        </div>
         
         <ApiKeyIndicator apiKeyMissing={apiKeyMissing} />
 
@@ -210,6 +473,21 @@ const App: React.FC = () => {
           />
         </div>
       </main>
+
+      {/* Saving/Error State */}
+      {isSaving && (
+        <div className="fixed top-0 left-0 w-full z-50 bg-blue-900 text-white text-center py-2 shadow-lg animate-pulse">
+          <span className="font-semibold">Saving session data...</span>
+        </div>
+      )}
+      {saveError && (
+        <div className="fixed top-0 left-0 w-full z-50 bg-red-700 text-white text-center py-2 shadow-lg animate-pulse">
+          <span className="font-semibold">Error:</span> {saveError}
+        </div>
+      )}
+
+      {showHistory && historySidebar}
+      {playbackModal}
     </div>
   );
 };

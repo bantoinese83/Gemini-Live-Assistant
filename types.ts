@@ -122,3 +122,23 @@ User: [user answer]
 Friend: That sounds great! How did it make you feel?`
   },
 ];
+
+export interface SupabaseSession {
+  id: string;
+  user_id?: string;
+  persona: string;
+  started_at: string;
+  ended_at?: string;
+  video_url?: string;
+  metadata?: Record<string, any>;
+}
+
+export interface SupabaseTranscript {
+  id: string;
+  session_id: string;
+  speaker: 'user' | 'ai';
+  text: string;
+  is_final: boolean;
+  timestamp_ms: number;
+  created_at: string;
+}

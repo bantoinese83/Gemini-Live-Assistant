@@ -2,7 +2,7 @@ import React from 'react';
 import { PlayIcon, StopIcon, ResetIcon, VideoOnIcon, VideoOffIcon } from './icons';
 import Button from './common/Button';
 import type { IconProps } from '../types'; // IconProps is used by Button for its icon elements
-import { AI_PERSONA_PRESETS, AIPersonaPreset } from '../types';
+import { AI_PERSONA_PRESETS } from '../types';
 
 /**
  * Props for the ControlPanel component.
@@ -77,9 +77,10 @@ const ControlPanel: React.FC<ControlPanelProps> = React.memo(({
   );
 
   return (
-    <div className="space-y-3 p-1">
+    <div className="space-y-5 p-4 bg-[var(--color-background-secondary)] rounded-2xl shadow-2xl border border-[var(--color-border-primary)] max-w-md mx-auto transition-all duration-300">
       {renderPersonaPicker()}
-      <div className="grid grid-cols-2 gap-3">
+      <hr className="my-2 border-[var(--color-border-primary)] opacity-40" />
+      <div className="grid grid-cols-2 gap-4">
         <Button
           {...commonButtonProps}
           variant="success"
@@ -88,6 +89,7 @@ const ControlPanel: React.FC<ControlPanelProps> = React.memo(({
           leftIcon={<PlayIcon {...iconProps} />}
           aria-label="Start Recording"
           aria-pressed={isRecording}
+          className="w-full transition-transform duration-150 hover:scale-105 focus:scale-105 shadow-md"
         >
           Start
         </Button>
@@ -95,21 +97,23 @@ const ControlPanel: React.FC<ControlPanelProps> = React.memo(({
           {...commonButtonProps}
           variant="danger"
           onClick={onStopRecording}
-          disabled={!isRecording || isDisabledBySystem} // Only enabled if currently recording
+          disabled={!isRecording || isDisabledBySystem}
           leftIcon={<StopIcon {...iconProps} />}
           aria-label="Stop Recording"
+          className="w-full transition-transform duration-150 hover:scale-105 focus:scale-105 shadow-md"
         >
           Stop
         </Button>
       </div>
       <Button
         {...commonButtonProps}
-        variant={isVideoEnabled ? 'primary' : 'secondary'} // Use primary when active, secondary when inactive
+        variant={isVideoEnabled ? 'primary' : 'secondary'}
         onClick={() => onToggleVideo(!isVideoEnabled)}
         disabled={isDisabledBySystem}
         leftIcon={isVideoEnabled ? <VideoOnIcon {...iconProps} /> : <VideoOffIcon {...iconProps} />}
-        aria-pressed={isVideoEnabled} // Indicates current state of the toggle
+        aria-pressed={isVideoEnabled}
         aria-label={isVideoEnabled ? "Turn Video Off" : "Turn Video On"}
+        className="w-full transition-transform duration-150 hover:scale-105 focus:scale-105 shadow-md"
       >
         {isVideoEnabled ? 'Video On' : 'Video Off'}
       </Button>
@@ -117,9 +121,10 @@ const ControlPanel: React.FC<ControlPanelProps> = React.memo(({
         {...commonButtonProps}
         variant="warning"
         onClick={onResetSession}
-        disabled={isRecording || isDisabledBySystem} // Disable reset if recording or system not ready
+        disabled={isRecording || isDisabledBySystem}
         leftIcon={<ResetIcon {...iconProps} />}
         aria-label="Reset Session"
+        className="w-full transition-transform duration-150 hover:scale-105 focus:scale-105 shadow-md"
       >
         Reset Session
       </Button>
