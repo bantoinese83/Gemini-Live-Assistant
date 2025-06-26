@@ -1,8 +1,8 @@
-
 import React from 'react';
 import { PlayIcon, StopIcon, ResetIcon, VideoOnIcon, VideoOffIcon } from './icons';
 import Button from './common/Button';
 import type { IconProps } from '../types'; // IconProps is used by Button for its icon elements
+import { AI_PERSONA_PRESETS, AIPersonaPreset } from '../types';
 
 /**
  * Props for the ControlPanel component.
@@ -24,6 +24,8 @@ interface ControlPanelProps {
   onResetSession: () => void;
   /** Callback function to toggle video enablement. Receives a boolean indicating the new desired state. */
   onToggleVideo: (enable: boolean) => void;
+  selectedPersonaId: string;
+  onPersonaChange: (personaId: string) => void;
 }
 
 /**
@@ -39,6 +41,8 @@ const ControlPanel: React.FC<ControlPanelProps> = React.memo(({
   onStopRecording,
   onResetSession,
   onToggleVideo,
+  selectedPersonaId,
+  onPersonaChange,
 }) => {
   // Common disabled state for most buttons
   const isDisabledBySystem = !isInitialized || apiKeyMissing;
@@ -49,8 +53,32 @@ const ControlPanel: React.FC<ControlPanelProps> = React.memo(({
   // Standard size for icons within buttons
   const iconProps: IconProps = { size: 20, "aria-hidden": true }; // Icons are decorative with button text
 
+  // Persona Picker
+  const renderPersonaPicker = () => (
+    <div className="mb-4">
+      <label className="block text-xs font-semibold text-[var(--color-text-secondary)] mb-2">AI Persona</label>
+      <div className="flex gap-3 overflow-x-auto pb-1">
+        {AI_PERSONA_PRESETS.map((persona) => (
+          <button
+            key={persona.id}
+            type="button"
+            className={`flex flex-col items-center px-3 py-2 rounded-lg border transition-all shadow-sm min-w-[120px] max-w-[160px] focus:outline-none focus:ring-2 focus:ring-accent-500/70 bg-[var(--color-background-secondary)] hover:bg-[var(--color-background-tertiary)] ${selectedPersonaId === persona.id ? 'border-accent-500 ring-2 ring-accent-500/60 scale-105' : 'border-slate-600/40'}`}
+            aria-pressed={selectedPersonaId === persona.id}
+            aria-label={persona.name}
+            onClick={() => onPersonaChange(persona.id)}
+          >
+            <span className="text-2xl mb-1">{persona.emoji}</span>
+            <span className="font-semibold text-sm mb-0.5 text-accent-400">{persona.name}</span>
+            <span className="text-xs text-slate-400 text-center leading-tight">{persona.description}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-3 p-1">
+      {renderPersonaPicker()}
       <div className="grid grid-cols-2 gap-3">
         <Button
           {...commonButtonProps}

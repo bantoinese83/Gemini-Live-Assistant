@@ -89,9 +89,11 @@ export class GeminiLiveAI {
    * Handles session setup and callbacks for API events.
    */
   private async connect(): Promise<void> {
-    if (this.isDisposed) return;
+    if (this.isDisposed) {
+      return;
+    }
     // Model supporting native audio input and output for more natural interaction.
-    const model = 'gemini-2.5-flash-preview-native-audio-dialog';
+    const model = 'gemini-2.0-flash-live-001';
     this.callbacks.onStatusUpdate('Connecting to Gemini...');
 
     // Configuration for the Live API session.
@@ -111,13 +113,17 @@ export class GeminiLiveAI {
         model: model,
         callbacks: {
           onopen: () => {
-            if (this.isDisposed) return;
+            if (this.isDisposed) {
+              return;
+            }
             this.callbacks.onStatusUpdate('Connection opened. Ready.');
             this.reconnectAttempts = 0; // Reset reconnect attempts on successful connection
           },
           onmessage: this.handleLiveServerMessage.bind(this),
           onerror: (e: Event) => {
-            if (this.isDisposed) return;
+            if (this.isDisposed) {
+              return;
+            }
             const errorMessage = (e instanceof ErrorEvent) ? e.message : (e instanceof Error) ? e.message : 'Unknown session error';
             console.error('Gemini Live Session Error:', e);
             this.callbacks.onErrorUpdate(`Session error: ${errorMessage}`);
@@ -126,7 +132,9 @@ export class GeminiLiveAI {
             this.disconnectAndReconnect(); // Attempt to reconnect on error
           },
           onclose: (e: CloseEvent) => {
-            if (this.isDisposed && e.code !== 1000 /* Normal Closure */) return;
+            if (this.isDisposed && e.code !== 1000) {
+              return;
+            }
             this.callbacks.onStatusUpdate(`Session closed: ${e.reason || 'No reason provided'}. Code: ${e.code}`);
             this.callbacks.onRecordingStateChange(false);
             // Reconnect only on abnormal closures and if not intentionally disposed
@@ -140,7 +148,9 @@ export class GeminiLiveAI {
         config: liveConnectConfig,
       });
     } catch (e: unknown) {
-      if (this.isDisposed) return;
+      if (this.isDisposed) {
+        return;
+      }
       const errorMessage = (e instanceof Error) ? e.message : 'Unknown connection error';
       console.error('Failed to connect to Gemini Live API:', e);
       this.callbacks.onErrorUpdate(`Connection failed: ${errorMessage}`);
@@ -161,7 +171,9 @@ export class GeminiLiveAI {
    * @param message - The `LiveServerMessage` received from the API.
    */
   private async handleLiveServerMessage(message: LiveServerMessage): Promise<void> {
-    if (this.isDisposed) return;
+    if (this.isDisposed) {
+      return;
+    }
     const serverContent: LiveServerContent | undefined = message.serverContent;
     const isTurnComplete = !!serverContent?.turnComplete;
 

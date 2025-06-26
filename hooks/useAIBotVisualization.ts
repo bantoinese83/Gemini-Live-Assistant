@@ -1,5 +1,4 @@
-
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import type { AIBotStyles } from '../types';
 import {
   AI_BOT_ANALYSER_FFT_SIZE,
@@ -12,6 +11,7 @@ import {
   AI_BOT_EAR_WIGGLE_ALT_OFFSET, AI_BOT_EAR_WIGGLE_ALT_REDUCTION_FACTOR, AI_BOT_MID_BINS_START_PERCENTAGE, AI_BOT_MID_BINS_END_PERCENTAGE,
   AI_BOT_EAR_WIGGLE_INTERVAL_MS, AI_BOT_EAR_WIGGLE_INTERVAL_HALF_MS,
 } from '../constants';
+import { perlinNoise1D } from '../utils/audioUtils';
 
 /**
  * Represents the initial, static styles for the AI Bot.
@@ -35,16 +35,12 @@ const applyGlobalBotStyles = (styles: AIBotStyles): void => {
   });
 };
 
-/**
- * Custom hook to manage AI Bot visualization based on audio input.
- * It processes audio data from the provided `sourceNode` (expected to be the AI's voice output)
- * and dynamically updates CSS custom properties on the root HTML element to animate the AI Bot.
- * The animation occurs only when `isAssistantSpeaking` is true.
- *
- * @param audioContext - The global `AudioContext` instance for creating the `AnalyserNode`.
- * @param sourceNode - The `AudioNode` from which the AI assistant's audio is sourced. This node will be connected to an `AnalyserNode`.
- * @param isAssistantSpeaking - Boolean flag indicating if the AI assistant is currently speaking. Visualization is active only if true.
- */
+const BLINK_MIN_INTERVAL = 2000; // ms
+const BLINK_MAX_INTERVAL = 6000; // ms
+const BLINK_DURATION = 120; // ms
+const MICRO_MOVE_MIN_INTERVAL = 2000; // ms
+const MICRO_MOVE_MAX_INTERVAL = 5000; // ms
+
 const useAIBotVisualization = (
   audioContext: AudioContext | null,
   sourceNode: AudioNode | null,
@@ -54,6 +50,87 @@ const useAIBotVisualization = (
   const dataArrayRef = useRef<Uint8Array | null>(null);
   const animationFrameIdRef = useRef<number | null>(null);
   const currentBotStylesRef = useRef<AIBotStyles>({ ...INITIAL_BOT_STYLES });
+  const timeRef = useRef<number>(Date.now());
+  const [emotion] = useState<'neutral' | 'happy' | 'curious'>('neutral');
+
+  // Blink state and timer
+  const blinkTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const blinkEndTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isBlinking, setIsBlinking] = useState(false);
+
+  // Micro-movement state and timer
+  const microMoveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [microHeadNod, setMicroHeadNod] = useState(0); // e.g., -1, 0, 1
+  const [microEarWiggle, setMicroEarWiggle] = useState(0); // e.g., -1, 0, 1
+
+  // Helper to schedule next blink
+  const scheduleNextBlink = useCallback(() => {
+    if (blinkTimeoutRef.current) {
+      clearTimeout(blinkTimeoutRef.current);
+    }
+    const interval = BLINK_MIN_INTERVAL + Math.random() * (BLINK_MAX_INTERVAL - BLINK_MIN_INTERVAL);
+    blinkTimeoutRef.current = setTimeout(() => {
+      setIsBlinking(true);
+      if (blinkEndTimeoutRef.current) {
+        clearTimeout(blinkEndTimeoutRef.current);
+      }
+      blinkEndTimeoutRef.current = setTimeout(() => {
+        setIsBlinking(false);
+        scheduleNextBlink();
+      }, BLINK_DURATION);
+    }, interval);
+  }, []);
+
+  // Helper to schedule next micro-movement
+  const scheduleNextMicroMove = useCallback(() => {
+    if (microMoveTimeoutRef.current) {
+      clearTimeout(microMoveTimeoutRef.current);
+    }
+    const interval = MICRO_MOVE_MIN_INTERVAL + Math.random() * (MICRO_MOVE_MAX_INTERVAL - MICRO_MOVE_MIN_INTERVAL);
+    microMoveTimeoutRef.current = setTimeout(() => {
+      // Randomly pick -1, 0, or 1 for nod and wiggle
+      setMicroHeadNod(Math.floor(Math.random() * 3) - 1);
+      setMicroEarWiggle(Math.floor(Math.random() * 3) - 1);
+      // Reset to 0 after a short time
+      setTimeout(() => {
+        setMicroHeadNod(0);
+        setMicroEarWiggle(0);
+      }, 400);
+      scheduleNextMicroMove();
+    }, interval);
+  }, []);
+
+  // Start/stop blink and micro-move timers based on speaking
+  useEffect(() => {
+    if (isAssistantSpeaking) {
+      scheduleNextBlink();
+      scheduleNextMicroMove();
+    } else {
+      setIsBlinking(false);
+      setMicroHeadNod(0);
+      setMicroEarWiggle(0);
+      if (blinkTimeoutRef.current) {
+        clearTimeout(blinkTimeoutRef.current);
+      }
+      if (blinkEndTimeoutRef.current) {
+        clearTimeout(blinkEndTimeoutRef.current);
+      }
+      if (microMoveTimeoutRef.current) {
+        clearTimeout(microMoveTimeoutRef.current);
+      }
+    }
+    return () => {
+      if (blinkTimeoutRef.current) {
+        clearTimeout(blinkTimeoutRef.current);
+      }
+      if (blinkEndTimeoutRef.current) {
+        clearTimeout(blinkEndTimeoutRef.current);
+      }
+      if (microMoveTimeoutRef.current) {
+        clearTimeout(microMoveTimeoutRef.current);
+      }
+    };
+  }, [isAssistantSpeaking, scheduleNextBlink, scheduleNextMicroMove]);
 
   // Memoized callback to apply styles to the document root
   const setBotStyles = useCallback((styles: AIBotStyles) => {
@@ -72,6 +149,13 @@ const useAIBotVisualization = (
       }
       setBotStyles({ ...INITIAL_BOT_STYLES });
       return; // Exit effect if prerequisites are not met
+    }
+
+    // If the audioContext changes, reset the analyser
+    if (analyserRef.current && analyserRef.current.context !== audioContext) {
+      analyserRef.current.disconnect();
+      analyserRef.current = null;
+      dataArrayRef.current = null;
     }
 
     // Initialize AnalyserNode if it doesn't exist
@@ -106,7 +190,9 @@ const useAIBotVisualization = (
         // This condition might be met if audioContext is closed during visualization.
         setBotStyles({ ...INITIAL_BOT_STYLES });
         // Request next frame to allow re-evaluation if context becomes available again.
-        if (animationFrameIdRef.current !== null) animationFrameIdRef.current = requestAnimationFrame(visualize);
+        if (animationFrameIdRef.current !== null) {
+          animationFrameIdRef.current = requestAnimationFrame(visualize);
+        }
         return;
       }
 
@@ -116,7 +202,9 @@ const useAIBotVisualization = (
         if (JSON.stringify(currentBotStylesRef.current) !== JSON.stringify(INITIAL_BOT_STYLES)) {
             setBotStyles({ ...INITIAL_BOT_STYLES });
         }
-        if (animationFrameIdRef.current !== null) animationFrameIdRef.current = requestAnimationFrame(visualize);
+        if (animationFrameIdRef.current !== null) {
+          animationFrameIdRef.current = requestAnimationFrame(visualize);
+        }
         return;
       }
 
@@ -178,8 +266,56 @@ const useAIBotVisualization = (
           newStyles['--earw'] = `${Math.max(AI_BOT_EAR_WIGGLE_MIN_SCALE, AI_BOT_EAR_WIGGLE_BASE_SCALE + earReact)}`;
       }
       
+      // --- PERLIN NOISE SMOOTH JITTER ---
+      const now = Date.now();
+      const t = (now - timeRef.current) / 1000; // seconds since mount
+      // Use different seeds for each property
+      const noiseHead = perlinNoise1D(t * 0.5 + 10) * (emotion === 'curious' ? 2.5 : 1.5);
+      const noiseMouth = perlinNoise1D(t * 0.7 + 20) * (emotion === 'happy' ? 0.18 : 0.12);
+      const noiseEar = perlinNoise1D(t * 0.9 + 30) * 0.18;
+      const noiseEye = perlinNoise1D(t * 0.6 + 40) * 0.08;
+
+      // --- BLINK ---
+      let elh = eyeSquintFactor + noiseEye;
+      let erh = eyeSquintFactor + noiseEye;
+      if (isBlinking) {
+        elh = 0.2;
+        erh = 0.2;
+      }
+
+      // --- MICRO-MOVEMENTS ---
+      // Head nod: add to head tilt
+      let headTilt = headTiltFactor + microHeadNod * 1.5 + noiseHead;
+      // Ear wiggle: add to ear scale
+      let ealw = parseFloat(newStyles['--ealw']) + microEarWiggle * 0.2 + noiseEar;
+      let earw = parseFloat(newStyles['--earw']) + microEarWiggle * 0.2 + noiseEar;
+      // Mouth: add noise
+      let mh = parseFloat(newStyles['--mh']) + noiseMouth;
+      let mw = parseFloat(newStyles['--mw']) + noiseMouth;
+
+      // Clamp values to reasonable ranges
+      elh = Math.max(0.15, Math.min(1.2, elh));
+      erh = Math.max(0.15, Math.min(1.2, erh));
+      mh = Math.max(AI_BOT_MOUTH_HEIGHT_MIN, Math.min(2.0, mh));
+      mw = Math.max(AI_BOT_MOUTH_WIDTH_MIN, Math.min(2.0, mw));
+      ealw = Math.max(0.7, Math.min(1.5, ealw));
+      earw = Math.max(0.7, Math.min(1.5, earw));
+      headTilt = Math.max(-5, Math.min(5, headTilt));
+
+      // Apply to styles
+      newStyles['--elh'] = `${elh}`;
+      newStyles['--erh'] = `${erh}`;
+      newStyles['--mh'] = `${mh}`;
+      newStyles['--mw'] = `${mw}`;
+      newStyles['--fx'] = `${headTilt}%`;
+      newStyles['--erx'] = `${headTilt}%`;
+      newStyles['--ealw'] = `${ealw}`;
+      newStyles['--earw'] = `${earw}`;
+
       setBotStyles(newStyles);
-      if (animationFrameIdRef.current !== null) animationFrameIdRef.current = requestAnimationFrame(visualize);
+      if (animationFrameIdRef.current !== null) {
+        animationFrameIdRef.current = requestAnimationFrame(visualize);
+      }
     };
 
     // Start the animation loop if not already started.
@@ -211,7 +347,7 @@ const useAIBotVisualization = (
       applyGlobalBotStyles({ ...INITIAL_BOT_STYLES });
       currentBotStylesRef.current = { ...INITIAL_BOT_STYLES };
     };
-  }, [audioContext, sourceNode, isAssistantSpeaking, setBotStyles]);
+  }, [audioContext, sourceNode, isAssistantSpeaking, setBotStyles, isBlinking, microHeadNod, microEarWiggle, emotion]);
   // Note: This hook does not return styles for the component to apply.
   // It manages the side effect of applying styles to document.documentElement directly.
 };

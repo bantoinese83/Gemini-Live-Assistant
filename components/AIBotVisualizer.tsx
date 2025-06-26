@@ -1,4 +1,3 @@
-
 import React from 'react';
 import AIBot from './AIBot';
 import useAIBotVisualization from '../hooks/useAIBotVisualization';
@@ -32,10 +31,17 @@ const AIBotVisualizer: React.FC<AIBotVisualizerProps> = React.memo(({
   // It does not return values directly used for rendering by this component.
   useAIBotVisualization(audioContext, sourceNode, isAssistantSpeaking);
 
+  const botStateLabel = isAssistantSpeaking ? 'AI bot is speaking' : 'AI bot is idle';
+
   return (
     // The 'ai-bot-container' class provides base styling and positioning for the bot.
     // This class and the bot's internal structure are defined in index.html's CSS.
-    <div className="ai-bot-container" role="figure" aria-label="AI Bot Visualizer">
+    <div
+      className="ai-bot-container"
+      role="img"
+      aria-label={botStateLabel}
+      tabIndex={0}
+    >
       <AIBot />
     </div>
   );

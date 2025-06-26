@@ -1,5 +1,4 @@
-
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { TRANSCRIPT_SCROLL_BEHAVIOR } from '../constants';
 import { BORDER_RADIUS_LG, TRANSITION_FAST } from '../theme';
 
@@ -20,7 +19,7 @@ interface TranscriptBubbleProps {
  * it's from the user or the AI model, and whether the content is final.
  */
 const TranscriptBubble: React.FC<TranscriptBubbleProps> = React.memo(({ text, isFinal, variant }) => {
-  const baseClass = `p-3 mb-2 shadow-lg leading-relaxed text-sm sm:text-base ${BORDER_RADIUS_LG} ${TRANSITION_FAST} max-w-full break-words`;
+  const baseClass = `p-3 mb-2 shadow-lg leading-relaxed text-sm sm:text-base ${BORDER_RADIUS_LG} ${TRANSITION_FAST} max-w-full break-words fade-in`;
   // Using direct Tailwind classes for bubble colors as they are simple and clear.
   const userColor = "bg-sky-600 hover:bg-sky-500 text-white self-end"; 
   const modelColor = "bg-slate-700 hover:bg-slate-600 text-slate-100 self-start";
@@ -69,32 +68,56 @@ const TranscriptColumn: React.FC<TranscriptColumnProps> = React.memo(({
 }) => {
   const scrollableContainerRef = useRef<HTMLDivElement>(null);
   const endOfMessagesRef = useRef<HTMLDivElement>(null);
+  const [showScrollButton, setShowScrollButton] = useState(false);
 
   // Auto-scroll to the bottom when new transcript messages arrive.
   useEffect(() => {
     const container = scrollableContainerRef.current;
     if (container && endOfMessagesRef.current) {
-        // Scroll only if the user isn't currently trying to scroll up
-        // A common heuristic: if scroll position is close to the bottom, auto-scroll.
-        const isScrolledToBottom = container.scrollHeight - container.clientHeight <= container.scrollTop + 30; // 30px buffer
+        const isScrolledToBottom = container.scrollHeight - container.clientHeight <= container.scrollTop + 30;
         if (isScrolledToBottom) {
              endOfMessagesRef.current.scrollIntoView({ behavior: TRANSCRIPT_SCROLL_BEHAVIOR });
         }
     }
-  }, [transcript]); // Scrolls on any transcript change (interim or final)
+  }, [transcript]);
+
+  // Show scroll-to-bottom button if user scrolls up
+  useEffect(() => {
+    const container = scrollableContainerRef.current;
+    if (!container) return;
+    const handleScroll = () => {
+      const isScrolledToBottom = container.scrollHeight - container.clientHeight <= container.scrollTop + 30;
+      setShowScrollButton(!isScrolledToBottom);
+    };
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const handleScrollToBottom = () => {
+    endOfMessagesRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   return (
     <section className={`flex flex-col bg-[var(--color-background-secondary)] p-3 sm:p-4 ${BORDER_RADIUS_LG} shadow-inner h-full overflow-hidden`} aria-labelledby={`${variant}-transcript-title`}>
       <h3 id={`${variant}-transcript-title`} className={`text-lg sm:text-xl font-semibold mb-3 sticky top-0 bg-[var(--color-background-secondary)] py-2 z-10 border-b border-[var(--color-border-primary)] ${titleColorClass}`}>
         {title}
       </h3>
-      <div ref={scrollableContainerRef} className="flex-grow overflow-y-auto space-y-1 pr-2 custom-scrollbar flex flex-col"> {/* Custom scrollbar class assumed to be globally defined */}
+      <div ref={scrollableContainerRef} className="flex-grow overflow-y-auto space-y-1 pr-2 custom-scrollbar flex flex-col" aria-live="polite" tabIndex={0}>
         {transcript ? (
           <TranscriptBubble text={transcript} isFinal={isFinal} variant={variant} />
         ) : (
           <p className="text-[var(--color-text-muted)] italic m-auto text-center p-4">{emptyMessage}</p>
         )}
-        <div ref={endOfMessagesRef} /> {/* Invisible element to scroll to */}
+        <div ref={endOfMessagesRef} />
+        {showScrollButton && (
+          <button
+            className="absolute bottom-4 right-4 bg-[var(--color-accent-teal)] text-white px-3 py-1 rounded-full shadow-lg hover:bg-[var(--color-accent-teal-hover)] focus:outline-none focus:ring-2 focus:ring-sky-400 transition"
+            onClick={handleScrollToBottom}
+            aria-label="Scroll to latest transcript"
+          >
+            ↓ New
+          </button>
+        )}
       </div>
     </section>
   );
