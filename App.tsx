@@ -3,7 +3,7 @@ import useGeminiLive from './hooks/useGeminiLive';
 import ControlPanel from './components/ControlPanel';
 import TranscriptDisplay from './components/TranscriptDisplay';
 import VideoPreview from './components/VideoPreview';
-import StatusDisplay, { StatusType } from './components/StatusDisplay';
+import StatusDisplay from './components/StatusDisplay';
 import VolumeControl from './components/VolumeControl';
 import ApiKeyIndicator from './components/ApiKeyIndicator';
 import LoadingSpinner from './components/LoadingSpinner';
