@@ -1,4 +1,5 @@
 import React from 'react';
+import { z } from 'zod';
 
 export interface AudioDataPart {
   data: string; // Base64 encoded string
@@ -125,11 +126,11 @@ Friend: That sounds great! How did it make you feel?`
 
 export interface SupabaseSession {
   id: string;
-  user_id?: string;
+  user_id?: string | null;
   persona: string;
   started_at: string;
-  ended_at?: string;
-  video_url?: string;
+  ended_at?: string | null;
+  video_url?: string | null;
   metadata?: Record<string, any>;
 }
 
@@ -142,3 +143,26 @@ export interface SupabaseTranscript {
   timestamp_ms: number;
   created_at: string;
 }
+
+export const SupabaseSessionSchema = z.object({
+  id: z.string(),
+  user_id: z.string().nullable().optional(),
+  persona: z.string(),
+  started_at: z.string(),
+  ended_at: z.string().nullable().optional(),
+  video_url: z.string().nullable().optional(),
+  metadata: z.record(z.any()).optional(),
+});
+
+export const SupabaseTranscriptSchema = z.object({
+  id: z.string(),
+  session_id: z.string(),
+  speaker: z.enum(['user', 'ai']),
+  text: z.string(),
+  is_final: z.boolean(),
+  timestamp_ms: z.number(),
+  created_at: z.string(),
+});
+
+export const SupabaseSessionArraySchema = z.array(SupabaseSessionSchema);
+export const SupabaseTranscriptArraySchema = z.array(SupabaseTranscriptSchema);
