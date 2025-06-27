@@ -9,18 +9,23 @@ import ApiKeyIndicator from './components/ApiKeyIndicator';
 import LoadingSpinner from './components/LoadingSpinner';
 import SystemInstructionInput from './components/SystemInstructionInput';
 import AIBotVisualizer from './components/AIBotVisualizer';
-import { DEFAULT_SYSTEM_INSTRUCTION, AI_SPEAKING_RESET_DELAY_MS } from './constants';
+import { AI_SPEAKING_RESET_DELAY_MS } from './constants';
 import { TRANSITION_MEDIUM, BORDER_RADIUS_LG } from './theme';
 import { AI_PERSONA_PRESETS } from './types';
 import {
   createSession,
   addTranscript,
   uploadSessionVideo,
-  getSession,
-  getTranscripts,
+  getCachedTranscripts,
+  cacheTranscripts,
 } from './services/sessionStorageService';
 import { supabase } from './services/supabaseClient';
 import type { SupabaseSession, SupabaseTranscript } from './types';
+import { HistoryIcon } from './components/icons';
+import axios from 'axios';
+import axiosRetry from 'axios-retry';
+import { SupabaseSessionArraySchema, SupabaseTranscriptArraySchema } from './types';
+import HoverVideoPlayer from 'react-hover-video-player';
 
 /**
  * The main application component.
@@ -66,7 +71,9 @@ const App: React.FC = () => {
   const lastPersonaDefaultRef = React.useRef(systemInstruction);
   const handlePersonaChange = (personaId: string) => {
     const newPersona = AI_PERSONA_PRESETS.find(p => p.id === personaId);
-    if (!newPersona) return;
+    if (!newPersona) {
+      return;
+    }
     // If the current instruction matches the last persona's default, update to new persona's default
     const prevPersona = AI_PERSONA_PRESETS.find(p => p.id === selectedPersonaId);
     const prevDefault = prevPersona ? prevPersona.systemInstruction : '';
@@ -83,14 +90,18 @@ const App: React.FC = () => {
     if (modelTranscript && !modelTranscriptIsFinal) {
       // AI is actively producing interim transcript parts.
       setIsAiSpeaking(true);
-      if (timerId) clearTimeout(timerId); // Clear any pending timeout to turn off speaking
+      if (timerId) {
+        clearTimeout(timerId);
+      } // Clear any pending timeout to turn off speaking
     } else if (modelTranscriptIsFinal && modelTranscript.length > 0) {
       // AI has finished a complete utterance. Keep "speaking" for a short delay for animation.
       setIsAiSpeaking(true);
       timerId = window.setTimeout(() => setIsAiSpeaking(false), AI_SPEAKING_RESET_DELAY_MS);
     } else { // No model transcript or it's empty and final (AI is silent).
       setIsAiSpeaking(false);
-      if (timerId) clearTimeout(timerId);
+      if (timerId) {
+        clearTimeout(timerId);
+      }
     }
     return () => clearTimeout(timerId); // Cleanup timeout on unmount or dependency change.
   }, [modelTranscript, modelTranscriptIsFinal]);
@@ -104,6 +115,10 @@ const App: React.FC = () => {
 
   const videoStreamRef = useRef<MediaStream | null>(null);
   const combinedStreamRef = useRef<MediaStream | null>(null);
+
+  const [savingMode, setSavingMode] = useState<'none' | 'creating' | 'saving'>(
+    'none'
+  );
 
   // Helper to get persona name
   const getPersonaName = () => {
@@ -127,6 +142,7 @@ const App: React.FC = () => {
   // 1. On start recording, create a session in Supabase and start MediaRecorder
   const handleStartRecording = useCallback(async () => {
     setSaveError(null);
+    setSavingMode('creating');
     setIsSaving(true);
     try {
       const session = await createSession({
@@ -151,7 +167,9 @@ const App: React.FC = () => {
       }
       mediaRecorderRef.current = recorder;
       recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) recordedChunksRef.current.push(event.data);
+        if (event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+        }
       };
       recorder.start();
       startRecording(true); // always enable video for session
@@ -159,12 +177,15 @@ const App: React.FC = () => {
       setSaveError('Failed to start session: ' + (err.message || err.toString()));
     } finally {
       setIsSaving(false);
+      setSavingMode('none');
     }
   }, [startRecording, systemInstruction, selectedPersonaId]);
 
   // 2. On transcript update, save to Supabase
   useEffect(() => {
-    if (!sessionIdRef.current || typeof sessionIdRef.current !== 'string') return;
+    if (!sessionIdRef.current || typeof sessionIdRef.current !== 'string') {
+      return;
+    }
     const saveTranscripts = async () => {
       try {
         if (userTranscript) {
@@ -194,8 +215,36 @@ const App: React.FC = () => {
   }, [userTranscript, userTranscriptIsFinal, modelTranscript, modelTranscriptIsFinal]);
 
   // 3. On stop recording, stop MediaRecorder, upload video, and update session
+  const [showSavePrompt, setShowSavePrompt] = useState(false);
+  const [, setPendingStop] = useState(false);
   const handleStopRecording = useCallback(async () => {
+    setPendingStop(true);
+    setShowSavePrompt(true);
+  }, []);
+  const confirmSaveSession = useCallback(async (shouldSave: boolean) => {
+    setShowSavePrompt(false);
+    setPendingStop(false);
+    if (!shouldSave) {
+      // Discard: Clean up local state only
+      stopRecording();
+      sessionIdRef.current = null;
+      videoBlobRef.current = null;
+      mediaRecorderRef.current = null;
+      recordedChunksRef.current = [];
+      if (videoStreamRef.current) {
+        videoStreamRef.current.getTracks().forEach(track => track.stop());
+        videoStreamRef.current = null;
+      }
+      if (combinedStreamRef.current) {
+        combinedStreamRef.current.getTracks().forEach(track => track.stop());
+        combinedStreamRef.current = null;
+      }
+      setMediaStream(null);
+      return;
+    }
+    // Save as before
     setSaveError(null);
+    setSavingMode('saving');
     setIsSaving(true);
     try {
       stopRecording();
@@ -246,8 +295,9 @@ const App: React.FC = () => {
       setSaveError('Failed to save video: ' + (err.message || err.toString()));
     } finally {
       setIsSaving(false);
+      setSavingMode('none');
     }
-  }, [stopRecording]);
+  }, [stopRecording, uploadSessionVideo, supabase]);
 
   /** Handles the reset session action. */
   const handleResetSession = useCallback(() => {
@@ -286,37 +336,88 @@ const App: React.FC = () => {
   ), [statusMessage]);
 
   const [showHistory, setShowHistory] = useState(false);
+  const SESSIONS_PAGE_SIZE = 10;
   const [sessions, setSessions] = useState<SupabaseSession[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
+  const [hasMoreSessions, setHasMoreSessions] = useState(true);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const lastSessionStartedAtRef = useRef<string | null>(null);
   const [selectedSession, setSelectedSession] = useState<SupabaseSession | null>(null);
   const [selectedTranscripts, setSelectedTranscripts] = useState<SupabaseTranscript[]>([]);
   const [showPlayback, setShowPlayback] = useState(false);
   const [playbackVideoUrl, setPlaybackVideoUrl] = useState<string | null>(null);
 
-  // Fetch session history on demand
-  const fetchHistory = async () => {
-    setHistoryLoading(true);
-    setHistoryError(null);
+  // Set up axios-retry for all axios requests
+  axiosRetry(axios, { retries: 3, retryDelay: axiosRetry.exponentialDelay });
+
+  // Fetch a page of sessions
+  const fetchSessionsPage = async (afterStartedAt?: string | null) => {
+    setIsFetchingMore(true);
     try {
-      const { data, error } = await supabase.from('sessions').select('*').order('started_at', { ascending: false });
-      if (error) throw error;
-      setSessions(data || []);
+      let query = supabase.from('sessions').select('*').order('started_at', { ascending: false }).limit(SESSIONS_PAGE_SIZE);
+      if (afterStartedAt) {
+        query = query.lt('started_at', afterStartedAt);
+      }
+      const { data, error } = await query;
+      if (error) {
+        throw error;
+      }
+      const valid = SupabaseSessionArraySchema.parse(data || []);
+      if (valid.length < SESSIONS_PAGE_SIZE) {
+        setHasMoreSessions(false);
+      }
+      if (afterStartedAt) {
+        setSessions(prev => [...prev, ...valid]);
+      } else {
+        setSessions(valid);
+      }
+      if (valid.length > 0) {
+        lastSessionStartedAtRef.current = valid[valid.length - 1].started_at;
+      }
     } catch (err: any) {
       setHistoryError('Failed to load session history: ' + (err.message || err.toString()));
+      setHasMoreSessions(false);
     } finally {
+      setIsFetchingMore(false);
       setHistoryLoading(false);
     }
   };
 
-  // Handle session click for playback
+  // Initial fetch or refresh
+  const fetchHistory = async () => {
+    setHistoryLoading(true);
+    setHistoryError(null);
+    setHasMoreSessions(true);
+    lastSessionStartedAtRef.current = null;
+    await fetchSessionsPage();
+  };
+
+  // Infinite scroll handler
+
+  // Handle session click for playback, with cache, validation, and retry
   const handleSessionClick = async (session: SupabaseSession) => {
     setSelectedSession(session);
     setShowPlayback(true);
     setPlaybackVideoUrl(null);
+    // Try cache first
+    let transcripts: SupabaseTranscript[] = [];
+    const cached = getCachedTranscripts(session.id);
+    if (cached) {
+      try {
+        transcripts = SupabaseTranscriptArraySchema.parse(cached);
+        setSelectedTranscripts(transcripts);
+      } catch {}
+    }
     try {
-      const transcripts = await getTranscripts(session.id);
+      // Always fetch latest from Supabase for accuracy
+      const result = await supabase.from('transcripts').select('*').eq('session_id', session.id).order('timestamp_ms', { ascending: true });
+      if (result.error) {
+        throw result.error;
+      }
+      transcripts = SupabaseTranscriptArraySchema.parse(result.data || []);
       setSelectedTranscripts(transcripts);
+      cacheTranscripts(session.id, transcripts);
       if (session.video_url) {
         const { data, error } = await supabase.storage
           .from('session-videos')
@@ -330,67 +431,48 @@ const App: React.FC = () => {
         setPlaybackVideoUrl(null);
       }
     } catch (err: any) {
-      setSelectedTranscripts([]);
+      setSelectedTranscripts(transcripts); // fallback to cache if available
       setPlaybackVideoUrl(null);
     }
   };
 
-  // UI for session history sidebar
-  const historySidebar = (
-    <aside className="fixed top-0 right-0 w-80 h-full bg-[var(--color-background-secondary)] shadow-2xl z-50 p-4 overflow-y-auto border-l border-[var(--color-border-primary)]">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-xl font-bold">Session History</h2>
-        <button onClick={() => setShowHistory(false)} className="text-lg font-bold px-2 py-1 rounded hover:bg-[var(--color-background-tertiary)]">×</button>
-      </div>
-      {historyLoading && <div className="text-center text-[var(--color-text-muted)]">Loading...</div>}
-      {historyError && <div className="text-red-400 text-center">{historyError}</div>}
-      <ul className="space-y-3">
-        {sessions.map(session => (
-          <li key={session.id} className="bg-[var(--color-background-tertiary)] rounded-lg p-3 shadow hover:shadow-lg transition cursor-pointer flex flex-col gap-1" onClick={() => handleSessionClick(session)}>
-            <div className="flex items-center gap-2">
-              <span className="font-semibold text-accent-400">{session.persona}</span>
-              <span className="text-xs text-[var(--color-text-muted)]">{new Date(session.started_at).toLocaleString()}</span>
-            </div>
-            {session.video_url && <span className="text-xs text-green-400">🎥 Video</span>}
-          </li>
-        ))}
-      </ul>
-    </aside>
-  );
+  // --- Session History Drawer ---
+  const popoverRef = useRef<HTMLDivElement>(null);
 
-  // UI for playback modal
-  const playbackModal = selectedSession && showPlayback && (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
-      <div className="bg-[var(--color-background-secondary)] rounded-2xl shadow-2xl p-6 max-w-2xl w-full relative">
-        <button onClick={() => setShowPlayback(false)} className="absolute top-2 right-2 text-lg font-bold px-2 py-1 rounded hover:bg-[var(--color-background-tertiary)]">×</button>
-        <h3 className="text-xl font-bold mb-2">Session Playback</h3>
-        <div className="mb-4">
-          <div className="font-semibold text-accent-400">{selectedSession.persona}</div>
-          <div className="text-xs text-[var(--color-text-muted)]">{new Date(selectedSession.started_at).toLocaleString()}</div>
-        </div>
-        {selectedSession.video_url ? (
-          playbackVideoUrl ? (
-            <video src={playbackVideoUrl} controls className="w-full rounded-lg mb-4" />
-          ) : (
-            <div className="text-[var(--color-text-muted)] mb-4">Loading video...</div>
-          )
-        ) : (
-          <div className="text-[var(--color-text-muted)] mb-4">No video available for this session.</div>
-        )}
-        <div className="max-h-60 overflow-y-auto bg-[var(--color-background-tertiary)] rounded p-3">
-          <h4 className="font-semibold mb-2">Transcripts</h4>
-          <ul className="space-y-2">
-            {selectedTranscripts.map(t => (
-              <li key={t.id} className="text-sm">
-                <span className={t.speaker === 'user' ? 'text-sky-400' : 'text-accent-400'}>[{t.speaker}]</span> {t.text}
-                <span className="text-xs text-[var(--color-text-muted)] ml-2">{new Date(t.created_at).toLocaleTimeString()}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-    </div>
-  );
+  const [videoThumbnails, setVideoThumbnails] = useState<{ [sessionId: string]: string }>({});
+  const [thumbnailLoading, setThumbnailLoading] = useState<{ [sessionId: string]: boolean }>({});
+
+  // Fetch signed URLs for video thumbnails after sessions are loaded
+  useEffect(() => {
+    const fetchThumbnails = async () => {
+      const newThumbnails: { [sessionId: string]: string } = {};
+      const newLoading: { [sessionId: string]: boolean } = {};
+      await Promise.all(sessions.map(async (session) => {
+        if (session.video_url && !videoThumbnails[session.id]) {
+          newLoading[session.id] = true;
+          try {
+            const { data, error } = await supabase.storage
+              .from('session-videos')
+              .createSignedUrl(session.video_url, 60 * 60);
+            if (!error && data?.signedUrl) {
+              newThumbnails[session.id] = data.signedUrl;
+            }
+          } catch {}
+          newLoading[session.id] = false;
+        }
+      }));
+      if (Object.keys(newThumbnails).length > 0) {
+        setVideoThumbnails(prev => ({ ...prev, ...newThumbnails }));
+      }
+      if (Object.keys(newLoading).length > 0) {
+        setThumbnailLoading(prev => ({ ...prev, ...newLoading }));
+      }
+    };
+    if (sessions.length > 0) {
+      fetchThumbnails();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessions]);
 
   if (!isInitialized && !apiKeyMissing) {
     return loadingScreen;
@@ -404,13 +486,102 @@ const App: React.FC = () => {
           <span className="font-semibold">Error:</span> {errorMessage}
         </div>
       )}
+      {/* Session History Drawer */}
+      {showHistory && (
+        <div className="fixed inset-0 z-50 flex items-stretch justify-end">
+          {/* Dim background */}
+          <div className="absolute inset-0 bg-black/40 transition-opacity" aria-hidden="true" onClick={() => setShowHistory(false)} />
+          {/* Drawer panel */}
+          <aside
+            ref={popoverRef}
+            className="relative h-full w-full sm:w-[28rem] md:w-[32rem] max-w-full bg-[var(--color-background-secondary)] rounded-l-2xl shadow-2xl border-l border-[var(--color-border-primary)] flex flex-col animate-slide-in-right focus:outline-none"
+            tabIndex={-1}
+            role="dialog"
+            aria-modal="true"
+            style={{ right: 0, top: 0, position: 'fixed' }}
+          >
+            <div className="flex items-center justify-between px-6 pt-6 pb-3 border-b border-[var(--color-border-primary)]">
+              <h2 className="text-2xl font-bold">Session History</h2>
+              <button onClick={() => setShowHistory(false)} className="text-3xl font-bold px-3 py-1 rounded hover:bg-[var(--color-background-tertiary)] focus:outline-none" aria-label="Close session history">×</button>
+            </div>
+            <div className="flex-1 p-6 overflow-y-auto min-h-0">
+              {historyLoading && <div className="text-center text-[var(--color-text-muted)] py-8">Loading...</div>}
+              {historyError && <div className="text-red-400 text-center py-8">{historyError}</div>}
+              {!historyLoading && !historyError && sessions.length === 0 && (
+                <div className="text-center text-[var(--color-text-muted)] py-16 text-lg">No sessions found.<br/>Your session history will appear here.</div>
+              )}
+              <ul className="space-y-5 pr-2">
+                {sessions.map(session => (
+                  <li key={session.id} className="bg-[var(--color-background-tertiary)] rounded-xl p-3 shadow hover:shadow-xl transition cursor-pointer flex flex-col gap-2 border border-[var(--color-border-primary)]" onClick={() => handleSessionClick(session)}>
+                    <div className="flex items-center gap-3 mb-1">
+                      <span className="font-semibold text-accent-400 text-base">{session.persona}</span>
+                      <span className="text-xs text-[var(--color-text-muted)]">{new Date(session.started_at).toLocaleString()}</span>
+                    </div>
+                    {session.video_url ? (
+                      thumbnailLoading[session.id] ? (
+                        <div className="w-full h-12 flex items-center justify-center bg-slate-800 rounded-md mt-1">
+                          <div style={{ width: 24, height: 24 }}><LoadingSpinner /></div>
+                        </div>
+                      ) : videoThumbnails[session.id] ? (
+                        <HoverVideoPlayer
+                          className="session-history-thumbnail"
+                          videoSrc={videoThumbnails[session.id]}
+                          pausedOverlay={
+                            <div className="flex items-center justify-center bg-slate-800 rounded-md" style={{ width: 80, height: 45 }}>
+                              <span className="text-slate-400 text-xs">Video Preview</span>
+                            </div>
+                          }
+                          loadingOverlay={
+                            <div className="flex items-center justify-center bg-slate-800 rounded-md" style={{ width: 80, height: 45 }}>
+                              <div style={{ width: 18, height: 18 }}><LoadingSpinner /></div>
+                            </div>
+                          }
+                          loop
+                          muted
+                          preload="metadata"
+                          style={{ width: 80, height: 45, borderRadius: '0.375rem', objectFit: 'cover', marginTop: 4 }}
+                        />
+                      ) : (
+                        <div className="w-full h-12 flex items-center justify-center bg-slate-800 rounded-md mt-1 text-slate-400 text-xs">No Video</div>
+                      )
+                    ) : (
+                      <div className="w-full h-12 flex items-center justify-center bg-slate-800 rounded-md mt-1 text-slate-400 text-xs">No Video</div>
+                    )}
+                    {/* Future: Add action buttons here (View, Delete, Export, etc.) */}
+                  </li>
+                ))}
+                {isFetchingMore && (
+                  <li className="text-center text-[var(--color-text-muted)] py-2">Loading more...</li>
+                )}
+                {!hasMoreSessions && sessions.length > 0 && (
+                  <li className="text-center text-[var(--color-text-muted)] py-2">End of history</li>
+                )}
+              </ul>
+            </div>
+          </aside>
+        </div>
+      )}
       {/* Sidebar / Control Area */}
       <aside className={`w-full lg:w-80 xl:w-96 bg-[var(--color-background-secondary)] p-3 sm:p-4 shadow-lg flex-shrink-0 lg:h-full lg:overflow-y-auto space-y-4 ${TRANSITION_MEDIUM} border-r border-[var(--color-border-primary)]`}>
         <div className="flex justify-between items-center mb-2">
           <h1 className="text-2xl sm:text-3xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-[var(--color-accent-teal)] to-[var(--color-accent-sky)] pt-1 pb-2 mb-1 sm:mb-2">
             Gemini Live
           </h1>
-          <button onClick={() => { setShowHistory(true); fetchHistory(); }} className="text-xs px-2 py-1 rounded bg-[var(--color-accent-sky)] text-white hover:bg-[var(--color-accent-sky-hover)]">History</button>
+          <button
+            onClick={() => {
+              if (showHistory) {
+                setShowHistory(false);
+              } else {
+                setShowHistory(true);
+                fetchHistory();
+              }
+            }}
+            className={`p-2 rounded-full ${showHistory ? 'bg-[var(--color-accent-sky-hover)]' : 'bg-[var(--color-accent-sky)]'} text-white hover:bg-[var(--color-accent-sky-hover)] focus:outline-none focus:ring-2 focus:ring-accent-500/70 shadow-md`}
+            aria-label={showHistory ? 'Close session history' : 'Show session history'}
+            aria-pressed={showHistory}
+          >
+            <HistoryIcon size={22} />
+          </button>
         </div>
         
         <ApiKeyIndicator apiKeyMissing={apiKeyMissing} />
@@ -448,13 +619,11 @@ const App: React.FC = () => {
       {/* Main Content Area */}
       <main className={`flex-grow p-3 sm:p-4 lg:p-6 flex flex-col space-y-4 overflow-y-auto lg:overflow-hidden h-full ${TRANSITION_MEDIUM}`}>
         {/* Video and AI Bot Visualizer Area */}
-        {/* Adjust max-h for video/bot area to ensure transcripts are always visible */}
         <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 min-h-0 md:h-[40%] md:max-h-[300px] lg:h-[45%] lg:max-h-[350px] xl:max-h-[400px] ${TRANSITION_MEDIUM}`}>
           <div className={`w-full h-full bg-[var(--color-background-secondary)] ${BORDER_RADIUS_LG} shadow-xl overflow-hidden aspect-video md:aspect-auto`}>
             <VideoPreview mediaStream={mediaStream} isVideoEnabled={localIsVideoEnabled} />
           </div>
           <div className={`w-full h-full bg-[var(--color-background-secondary)] ${BORDER_RADIUS_LG} shadow-xl overflow-hidden aspect-square md:aspect-auto`}>
-            {/* Pass output audio context and gain node for AI voice visualization */}
             <AIBotVisualizer 
               audioContext={outputAudioContext} 
               sourceNode={outputGainNode}
@@ -462,7 +631,6 @@ const App: React.FC = () => {
             />
           </div>
         </div>
-
         {/* Transcript Display Area */}
         <div className={`flex-grow min-h-0 md:h-[60%] lg:h-[55%] ${TRANSITION_MEDIUM}`}> 
           <TranscriptDisplay
@@ -473,21 +641,18 @@ const App: React.FC = () => {
           />
         </div>
       </main>
-
-      {/* Saving/Error State */}
-      {isSaving && (
-        <div className="fixed top-0 left-0 w-full z-50 bg-blue-900 text-white text-center py-2 shadow-lg animate-pulse">
-          <span className="font-semibold">Saving session data...</span>
+      {showSavePrompt && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center">
+          <div className="bg-[var(--color-background-secondary)] rounded-2xl shadow-2xl p-6 max-w-sm w-full">
+            <h3 className="text-lg font-bold mb-4">Save this session?</h3>
+            <p className="mb-6">Would you like to save the video and transcript for this session?</p>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => confirmSaveSession(false)} className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700">Discard</button>
+              <button onClick={() => confirmSaveSession(true)} className="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700">Save</button>
+            </div>
+          </div>
         </div>
       )}
-      {saveError && (
-        <div className="fixed top-0 left-0 w-full z-50 bg-red-700 text-white text-center py-2 shadow-lg animate-pulse">
-          <span className="font-semibold">Error:</span> {saveError}
-        </div>
-      )}
-
-      {showHistory && historySidebar}
-      {playbackModal}
     </div>
   );
 };

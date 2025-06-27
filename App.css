@@ -1,0 +1,8 @@
+.session-history-thumbnail video {
+  height: 45px !important;
+  width: 80px !important;
+  object-fit: cover !important;
+  border-radius: 0.375rem !important;
+  display: block;
+  margin: 0 auto;
+} 

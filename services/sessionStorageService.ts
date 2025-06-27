@@ -55,4 +55,42 @@ export async function getTranscripts(sessionId: string) {
     .order('timestamp_ms', { ascending: true });
   if (error) throw error;
   return data as SupabaseTranscript[];
+}
+
+// Local cache keys
+const SESSIONS_CACHE_KEY = 'cached_sessions';
+const TRANSCRIPTS_CACHE_PREFIX = 'cached_transcripts_';
+
+// Cache sessions array
+export function cacheSessions(sessions: SupabaseSession[]) {
+  try {
+    sessionStorage.setItem(SESSIONS_CACHE_KEY, JSON.stringify(sessions));
+  } catch {}
+}
+
+export function getCachedSessions(): SupabaseSession[] | null {
+  try {
+    const raw = sessionStorage.getItem(SESSIONS_CACHE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as SupabaseSession[];
+  } catch {
+    return null;
+  }
+}
+
+// Cache transcripts for a session
+export function cacheTranscripts(sessionId: string, transcripts: SupabaseTranscript[]) {
+  try {
+    sessionStorage.setItem(TRANSCRIPTS_CACHE_PREFIX + sessionId, JSON.stringify(transcripts));
+  } catch {}
+}
+
+export function getCachedTranscripts(sessionId: string): SupabaseTranscript[] | null {
+  try {
+    const raw = sessionStorage.getItem(TRANSCRIPTS_CACHE_PREFIX + sessionId);
+    if (!raw) return null;
+    return JSON.parse(raw) as SupabaseTranscript[];
+  } catch {
+    return null;
+  }
 } 

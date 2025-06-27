@@ -1,4 +1,3 @@
-
 import React from 'react';
 import type { IconProps } from '../../types';
 
@@ -93,4 +92,23 @@ export const VideoOffIcon: React.FC<IconProps> = ({ size = defaultIconSize, clas
     <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
     <path strokeLinecap="round" strokeLinejoin="round" d="M1.5 12a10.5 10.5 0 0 0 10.5 10.5h.75a10.5 10.5 0 0 0 10.5-10.5v-.75a10.5 10.5 0 0 0-10.5-10.5h-.75A10.5 10.5 0 0 0 1.5 11.25v.75Z" />
  </svg>
+);
+
+/** HistoryIcon component. Clock/history style for session history. */
+export const HistoryIcon: React.FC<IconProps> = ({ size = defaultIconSize, className, ...props }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    strokeWidth={1.5}
+    stroke="currentColor"
+    width={size}
+    height={size}
+    className={cn("inline-block", className)}
+    aria-hidden="true"
+    {...props}
+  >
+    <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.5" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M12 7.5v4.25l2.5 2.5" />
+  </svg>
 );
