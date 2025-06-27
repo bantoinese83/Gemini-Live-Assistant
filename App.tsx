@@ -25,7 +25,9 @@ import { HistoryIcon } from './components/icons';
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
 import { SupabaseSessionArraySchema, SupabaseTranscriptArraySchema } from './types';
-import HoverVideoPlayer from 'react-hover-video-player';
+import SessionHistoryDrawer from './components/SessionHistoryDrawer';
+import SavePromptModal from './components/SavePromptModal';
+import SessionPlaybackModal from './components/SessionPlaybackModal';
 
 /**
  * The main application component.
@@ -393,7 +395,31 @@ const App: React.FC = () => {
     await fetchSessionsPage();
   };
 
-  // Infinite scroll handler
+  // Ref for the scrollable container in the session history drawer
+  const historyScrollRef = useRef<HTMLDivElement>(null);
+
+  // Auto-fetch on scroll for session history
+  useEffect(() => {
+    if (!showHistory) {
+      return;
+    }
+    const container = historyScrollRef.current;
+    if (!container) {
+      return;
+    }
+    const handleScroll = () => {
+      if (
+        container.scrollHeight - container.scrollTop - container.clientHeight < 120 &&
+        hasMoreSessions &&
+        !isFetchingMore &&
+        !historyLoading
+      ) {
+        fetchSessionsPage(lastSessionStartedAtRef.current);
+      }
+    };
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [showHistory, hasMoreSessions, isFetchingMore, historyLoading]);
 
   // Handle session click for playback, with cache, validation, and retry
   const handleSessionClick = async (session: SupabaseSession) => {
@@ -437,8 +463,6 @@ const App: React.FC = () => {
   };
 
   // --- Session History Drawer ---
-  const popoverRef = useRef<HTMLDivElement>(null);
-
   const [videoThumbnails, setVideoThumbnails] = useState<{ [sessionId: string]: string }>({});
   const [thumbnailLoading, setThumbnailLoading] = useState<{ [sessionId: string]: boolean }>({});
 
@@ -474,6 +498,11 @@ const App: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessions]);
 
+  // Add this function to the component scope
+  const handleDeleteSession = (sessionId: string) => {
+    alert(`Delete session ${sessionId} (implement actual delete logic here)`);
+  };
+
   if (!isInitialized && !apiKeyMissing) {
     return loadingScreen;
   }
@@ -487,80 +516,20 @@ const App: React.FC = () => {
         </div>
       )}
       {/* Session History Drawer */}
-      {showHistory && (
-        <div className="fixed inset-0 z-50 flex items-stretch justify-end">
-          {/* Dim background */}
-          <div className="absolute inset-0 bg-black/40 transition-opacity" aria-hidden="true" onClick={() => setShowHistory(false)} />
-          {/* Drawer panel */}
-          <aside
-            ref={popoverRef}
-            className="relative h-full w-full sm:w-[28rem] md:w-[32rem] max-w-full bg-[var(--color-background-secondary)] rounded-l-2xl shadow-2xl border-l border-[var(--color-border-primary)] flex flex-col animate-slide-in-right focus:outline-none"
-            tabIndex={-1}
-            role="dialog"
-            aria-modal="true"
-            style={{ right: 0, top: 0, position: 'fixed' }}
-          >
-            <div className="flex items-center justify-between px-6 pt-6 pb-3 border-b border-[var(--color-border-primary)]">
-              <h2 className="text-2xl font-bold">Session History</h2>
-              <button onClick={() => setShowHistory(false)} className="text-3xl font-bold px-3 py-1 rounded hover:bg-[var(--color-background-tertiary)] focus:outline-none" aria-label="Close session history">×</button>
-            </div>
-            <div className="flex-1 p-6 overflow-y-auto min-h-0">
-              {historyLoading && <div className="text-center text-[var(--color-text-muted)] py-8">Loading...</div>}
-              {historyError && <div className="text-red-400 text-center py-8">{historyError}</div>}
-              {!historyLoading && !historyError && sessions.length === 0 && (
-                <div className="text-center text-[var(--color-text-muted)] py-16 text-lg">No sessions found.<br/>Your session history will appear here.</div>
-              )}
-              <ul className="space-y-5 pr-2">
-                {sessions.map(session => (
-                  <li key={session.id} className="bg-[var(--color-background-tertiary)] rounded-xl p-3 shadow hover:shadow-xl transition cursor-pointer flex flex-col gap-2 border border-[var(--color-border-primary)]" onClick={() => handleSessionClick(session)}>
-                    <div className="flex items-center gap-3 mb-1">
-                      <span className="font-semibold text-accent-400 text-base">{session.persona}</span>
-                      <span className="text-xs text-[var(--color-text-muted)]">{new Date(session.started_at).toLocaleString()}</span>
-                    </div>
-                    {session.video_url ? (
-                      thumbnailLoading[session.id] ? (
-                        <div className="w-full h-12 flex items-center justify-center bg-slate-800 rounded-md mt-1">
-                          <div style={{ width: 24, height: 24 }}><LoadingSpinner /></div>
-                        </div>
-                      ) : videoThumbnails[session.id] ? (
-                        <HoverVideoPlayer
-                          className="session-history-thumbnail"
-                          videoSrc={videoThumbnails[session.id]}
-                          pausedOverlay={
-                            <div className="flex items-center justify-center bg-slate-800 rounded-md" style={{ width: 80, height: 45 }}>
-                              <span className="text-slate-400 text-xs">Video Preview</span>
-                            </div>
-                          }
-                          loadingOverlay={
-                            <div className="flex items-center justify-center bg-slate-800 rounded-md" style={{ width: 80, height: 45 }}>
-                              <div style={{ width: 18, height: 18 }}><LoadingSpinner /></div>
-                            </div>
-                          }
-                          loop
-                          muted
-                          preload="metadata"
-                          style={{ width: 80, height: 45, borderRadius: '0.375rem', objectFit: 'cover', marginTop: 4 }}
-                        />
-                      ) : (
-                        <div className="w-full h-12 flex items-center justify-center bg-slate-800 rounded-md mt-1 text-slate-400 text-xs">No Video</div>
-                      )
-                    ) : (
-                      <div className="w-full h-12 flex items-center justify-center bg-slate-800 rounded-md mt-1 text-slate-400 text-xs">No Video</div>
-                    )}
-                    {/* Future: Add action buttons here (View, Delete, Export, etc.) */}
-                  </li>
-                ))}
-                {isFetchingMore && (
-                  <li className="text-center text-[var(--color-text-muted)] py-2">Loading more...</li>
-                )}
-                {!hasMoreSessions && sessions.length > 0 && (
-                  <li className="text-center text-[var(--color-text-muted)] py-2">End of history</li>
-                )}
-              </ul>
-            </div>
-          </aside>
-        </div>
-      )}
+      <SessionHistoryDrawer
+        open={showHistory}
+        sessions={sessions}
+        loading={historyLoading}
+        error={historyError}
+        videoThumbnails={videoThumbnails}
+        thumbnailLoading={thumbnailLoading}
+        onSessionClick={handleSessionClick}
+        onDeleteSession={handleDeleteSession}
+        onClose={() => setShowHistory(false)}
+        hasMoreSessions={hasMoreSessions}
+        isFetchingMore={isFetchingMore}
+        scrollContainerRef={historyScrollRef}
+      />
       {/* Sidebar / Control Area */}
       <aside className={`w-full lg:w-80 xl:w-96 bg-[var(--color-background-secondary)] p-3 sm:p-4 shadow-lg flex-shrink-0 lg:h-full lg:overflow-y-auto space-y-4 ${TRANSITION_MEDIUM} border-r border-[var(--color-border-primary)]`}>
         <div className="flex justify-between items-center mb-2">
@@ -641,18 +610,23 @@ const App: React.FC = () => {
           />
         </div>
       </main>
-      {showSavePrompt && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center">
-          <div className="bg-[var(--color-background-secondary)] rounded-2xl shadow-2xl p-6 max-w-sm w-full">
-            <h3 className="text-lg font-bold mb-4">Save this session?</h3>
-            <p className="mb-6">Would you like to save the video and transcript for this session?</p>
-            <div className="flex justify-end gap-3">
-              <button onClick={() => confirmSaveSession(false)} className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700">Discard</button>
-              <button onClick={() => confirmSaveSession(true)} className="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700">Save</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Save Prompt Modal */}
+      <SavePromptModal
+        open={showSavePrompt}
+        isSaving={isSaving}
+        savingMode={savingMode}
+        saveError={saveError}
+        onConfirm={confirmSaveSession}
+        onClose={() => setShowSavePrompt(false)}
+      />
+      {/* Session Playback Modal */}
+      <SessionPlaybackModal
+        open={showPlayback}
+        session={selectedSession}
+        transcripts={selectedTranscripts}
+        videoUrl={playbackVideoUrl}
+        onClose={() => setShowPlayback(false)}
+      />
     </div>
   );
 };
