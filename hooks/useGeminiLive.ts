@@ -111,6 +111,9 @@ const useGeminiLive = (systemInstruction: string = DEFAULT_SYSTEM_INSTRUCTION): 
           return;
         }
         setIsRecording(recording);
+        if (!recording && !errorMessage) {
+          setStatusMessage('Ready');
+        }
       },
       onUserTranscriptUpdate: (transcript, isFinal) => {
         if (!isMountedRef.current) {
