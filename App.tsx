@@ -3,7 +3,7 @@ import useGeminiLive from './hooks/useGeminiLive';
 import ControlPanel from './components/ControlPanel';
 import TranscriptDisplay from './components/TranscriptDisplay';
 import VideoPreview from './components/VideoPreview';
-import StatusDisplay from './components/StatusDisplay';
+import StatusDisplay, { StatusType } from './components/StatusDisplay';
 import VolumeControl from './components/VolumeControl';
 import ApiKeyIndicator from './components/ApiKeyIndicator';
 import LoadingSpinner from './components/LoadingSpinner';
@@ -18,6 +18,7 @@ import {
   uploadSessionVideo,
   getCachedTranscripts,
   cacheTranscripts,
+  deleteSessionAndData,
 } from './services/sessionStorageService';
 import { supabase } from './services/supabaseClient';
 import type { SupabaseSession, SupabaseTranscript } from './types';
@@ -28,6 +29,7 @@ import { SupabaseSessionArraySchema, SupabaseTranscriptArraySchema } from './typ
 import SessionHistoryDrawer from './components/SessionHistoryDrawer';
 import SavePromptModal from './components/SavePromptModal';
 import SessionPlaybackModal from './components/SessionPlaybackModal';
+import SuccessOverlay from './components/SuccessOverlay';
 
 /**
  * The main application component.
@@ -122,6 +124,13 @@ const App: React.FC = () => {
     'none'
   );
 
+  // Success overlay state
+  const [showSuccess, setShowSuccess] = useState(false);
+  // Delete confirmation state
+  const [pendingDeleteSessionId, setPendingDeleteSessionId] = useState<string | null>(null);
+  // Local status override for forcing 'Ready' after save/discard
+  const [statusOverride, setStatusOverride] = useState<string | null>(null);
+
   // Helper to get persona name
   const getPersonaName = () => {
     const persona = AI_PERSONA_PRESETS.find(p => p.id === selectedPersonaId);
@@ -143,6 +152,7 @@ const App: React.FC = () => {
 
   // 1. On start recording, create a session in Supabase and start MediaRecorder
   const handleStartRecording = useCallback(async () => {
+    setStatusOverride(null);
     setSaveError(null);
     setSavingMode('creating');
     setIsSaving(true);
@@ -242,6 +252,8 @@ const App: React.FC = () => {
         combinedStreamRef.current = null;
       }
       setMediaStream(null);
+      setStatusOverride('Ready');
+      setTimeout(() => setStatusOverride(null), 2000);
       return;
     }
     // Save as before
@@ -293,6 +305,11 @@ const App: React.FC = () => {
         combinedStreamRef.current = null;
       }
       setMediaStream(null);
+      // Show success overlay after save
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 2000);
+      setStatusOverride('Ready');
+      setTimeout(() => setStatusOverride(null), 2000);
     } catch (err: any) {
       setSaveError('Failed to save video: ' + (err.message || err.toString()));
     } finally {
@@ -303,6 +320,7 @@ const App: React.FC = () => {
 
   /** Handles the reset session action. */
   const handleResetSession = useCallback(() => {
+    setStatusOverride(null);
     resetSession();
   }, [resetSession]);
   
@@ -498,9 +516,27 @@ const App: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessions]);
 
-  // Add this function to the component scope
-  const handleDeleteSession = (sessionId: string) => {
-    alert(`Delete session ${sessionId} (implement actual delete logic here)`);
+  // Update handleDeleteSession to use confirmation modal
+  const handleDeleteSession = async (sessionId: string) => {
+    setPendingDeleteSessionId(sessionId);
+  };
+  // Confirm delete handler
+  const confirmDeleteSession = async () => {
+    if (!pendingDeleteSessionId) {
+      return;
+    }
+    const session = sessions.find(s => s.id === pendingDeleteSessionId);
+    if (!session) {
+      return;
+    }
+    try {
+      await deleteSessionAndData(session);
+      setSessions(prev => prev.filter(s => s.id !== pendingDeleteSessionId));
+    } catch (err: any) {
+      alert('Failed to delete session: ' + (err.message || err.toString()));
+    } finally {
+      setPendingDeleteSessionId(null);
+    }
   };
 
   if (!isInitialized && !apiKeyMissing) {
@@ -509,10 +545,26 @@ const App: React.FC = () => {
 
   return (
     <div className="flex flex-col lg:flex-row h-screen bg-[var(--color-background-primary)] text-[var(--color-text-primary)] overflow-hidden fade-in">
+      {/* Success Overlay */}
+      <SuccessOverlay visible={showSuccess} />
       {/* Error Banner */}
       {errorMessage && (
         <div className="fixed top-0 left-0 w-full z-50 bg-red-600 text-white text-center py-2 shadow-lg animate-pulse">
           <span className="font-semibold">Error:</span> {errorMessage}
+        </div>
+      )}
+      {/* Delete Confirmation Modal */}
+      {pendingDeleteSessionId && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center">
+          <div className="bg-[var(--color-background-secondary)] rounded-2xl shadow-2xl p-6 max-w-sm w-full relative">
+            <button onClick={() => setPendingDeleteSessionId(null)} className="absolute top-3 right-3 text-slate-400 hover:text-slate-200 text-xl font-bold">&times;</button>
+            <h3 className="text-lg font-bold mb-4">Delete this session?</h3>
+            <p className="mb-6">Are you sure you want to delete this session? This action cannot be undone.</p>
+            <div className="flex justify-end gap-3">
+              <button onClick={() => setPendingDeleteSessionId(null)} className="px-4 py-2 rounded bg-slate-600 text-white hover:bg-slate-700">Cancel</button>
+              <button onClick={confirmDeleteSession} className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700">Delete</button>
+            </div>
+          </div>
         </div>
       )}
       {/* Session History Drawer */}
@@ -579,7 +631,22 @@ const App: React.FC = () => {
               <VolumeControl label="Output (AI Voice)" gainNode={outputGainNode} initialVolume={0.7} audioContext={outputAudioContext} />
             </div>
              <div className="pt-2 mt-auto"> {/* Push StatusDisplay to bottom of sidebar */}
-                <StatusDisplay statusMessage={statusMessage} errorMessage={errorMessage} />
+                <StatusDisplay
+                  statusMessage={statusOverride || ((!isRecording && (!statusMessage || statusMessage.toLowerCase().includes('ready') || statusMessage === 'Initializing...')) ? 'Ready' : statusMessage)}
+                  errorMessage={errorMessage}
+                  isSaving={isSaving}
+                  statusType={
+                    errorMessage ? 'error' :
+                    isSaving ? 'processing' :
+                    isRecording ? 'recording' :
+                    (statusMessage?.toLowerCase().includes('connecting') || statusMessage?.toLowerCase().includes('initializing')) ? 'connecting' :
+                    'idle'
+                  }
+                  onTimeout={() => {
+                    setStatusOverride('Ready');
+                    setIsSaving(false);
+                  }}
+                />
             </div>
           </>
         )}

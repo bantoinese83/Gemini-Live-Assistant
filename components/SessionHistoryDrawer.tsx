@@ -1,7 +1,5 @@
 import React from 'react';
 import HoverVideoPlayer from 'react-hover-video-player';
-import LoadingSpinner from './LoadingSpinner';
-import { HistoryIcon } from './icons';
 import type { SupabaseSession } from '../types';
 
 interface SessionHistoryDrawerProps {
@@ -33,7 +31,9 @@ const SessionHistoryDrawer: React.FC<SessionHistoryDrawerProps> = ({
   isFetchingMore = false,
   scrollContainerRef,
 }) => {
-  if (!open) return null;
+  if (!open) {
+    return null;
+  }
   return (
     <div className="fixed inset-0 z-50 flex items-stretch justify-end">
       {/* Dim background */}
@@ -70,36 +70,29 @@ const SessionHistoryDrawer: React.FC<SessionHistoryDrawerProps> = ({
                   <span className="text-xs text-[var(--color-text-muted)]">{new Date(session.started_at).toLocaleString()}</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  {session.video_url ? (
-                    thumbnailLoading[session.id] ? (
-                      <div className="w-20 h-12 flex items-center justify-center bg-slate-800 rounded-md">
-                        <div style={{ width: 24, height: 24 }}><LoadingSpinner /></div>
-                      </div>
-                    ) : videoThumbnails[session.id] ? (
-                      <HoverVideoPlayer
-                        className="session-history-thumbnail shadow-md"
-                        videoSrc={videoThumbnails[session.id]}
-                        pausedOverlay={
-                          <div className="flex items-center justify-center bg-slate-800 rounded-md" style={{ width: 80, height: 45 }}>
-                            <span className="text-slate-400 text-xs">Video Preview</span>
-                          </div>
-                        }
-                        loadingOverlay={
-                          <div className="flex items-center justify-center bg-slate-800 rounded-md" style={{ width: 80, height: 45 }}>
-                            <div style={{ width: 18, height: 18 }}><LoadingSpinner /></div>
-                          </div>
-                        }
-                        loop
-                        muted
-                        preload="metadata"
-                        style={{ width: 80, height: 45, borderRadius: '0.375rem', objectFit: 'cover', marginTop: 0 }}
-                      />
+                  <div className="flex-shrink-0 w-20 h-12 flex items-center justify-center rounded-lg overflow-hidden bg-slate-800">
+                    {session.video_url ? (
+                      thumbnailLoading[session.id] ? (
+                        <div className="w-full h-full bg-slate-700 rounded-lg animate-pulse" />
+                      ) : videoThumbnails[session.id] ? (
+                        <HoverVideoPlayer
+                          className="session-history-thumbnail shadow-md rounded-lg"
+                          videoSrc={videoThumbnails[session.id]}
+                          loadingOverlay={
+                            <div className="bg-slate-700 rounded-lg animate-pulse w-full h-full" />
+                          }
+                          loop
+                          muted
+                          preload="metadata"
+                          style={{ width: '100%', height: '100%', borderRadius: '0.5rem', objectFit: 'cover', marginTop: 0 }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs">No Video</div>
+                      )
                     ) : (
-                      <div className="w-20 h-12 flex items-center justify-center bg-slate-800 rounded-md text-slate-400 text-xs">No Video</div>
-                    )
-                  ) : (
-                    <div className="w-20 h-12 flex items-center justify-center bg-slate-800 rounded-md text-slate-400 text-xs">No Video</div>
-                  )}
+                      <div className="w-full h-full flex items-center justify-center text-slate-400 text-xs">No Video</div>
+                    )}
+                  </div>
                   <div className="flex-1 flex flex-col gap-1 ml-2">
                     <span className="text-sm font-medium text-[var(--color-text-primary)] truncate">Session ID: {session.id.slice(0, 8)}...</span>
                     <span className="text-xs text-[var(--color-text-muted)] truncate">Started: {new Date(session.started_at).toLocaleDateString()}</span>

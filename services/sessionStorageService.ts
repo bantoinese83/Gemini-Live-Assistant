@@ -93,4 +93,17 @@ export function getCachedTranscripts(sessionId: string): SupabaseTranscript[] | 
   } catch {
     return null;
   }
+}
+
+export async function deleteSessionAndData(session: SupabaseSession) {
+  // 1. Delete transcripts
+  await supabase.from('transcripts').delete().eq('session_id', session.id);
+
+  // 2. Delete video from storage if exists
+  if (session.video_url) {
+    await supabase.storage.from('session-videos').remove([session.video_url]);
+  }
+
+  // 3. Delete session
+  await supabase.from('sessions').delete().eq('id', session.id);
 } 
