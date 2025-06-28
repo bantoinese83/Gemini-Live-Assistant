@@ -1,7 +1,6 @@
-
 import React, { useEffect, useRef } from 'react';
 import { BORDER_RADIUS_LG, TRANSITION_MEDIUM } from '../theme';
-import { VideoOffIcon } from './icons'; // Using an icon for the placeholder
+import { VideoOff } from 'lucide-react';
 
 /**
  * Props for the VideoPreview component.
@@ -57,7 +56,7 @@ const VideoPreview: React.FC<VideoPreviewProps> = React.memo(({ mediaStream, isV
             className={`absolute inset-0 flex flex-col justify-center items-center text-center text-[var(--color-text-muted)] bg-[var(--color-background-secondary)]/90 p-4 ${TRANSITION_MEDIUM} opacity-100`}
             role="status" // Indicates this content describes a status
         >
-          <VideoOffIcon size={48} className="mb-3 text-[var(--color-text-muted)] opacity-60" aria-hidden="true" />
+          <VideoOff size={48} className="mb-3 text-[var(--color-text-muted)] opacity-60" aria-hidden="true" />
           <span className="text-lg font-medium text-[var(--color-text-secondary)]">
             {!mediaStream ? "Waiting for Camera Access" : "Video Disabled"}
           </span>

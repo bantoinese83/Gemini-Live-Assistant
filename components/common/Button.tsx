@@ -1,4 +1,3 @@
-
 import React from 'react';
 import type { ButtonProps } from '../../types'; // IconProps is used internally by ButtonProps
 import { 
@@ -77,5 +76,12 @@ const Button: React.FC<ButtonProps> = React.memo(({
     </button>
   );
 });
+
+Button.defaultProps = {
+  variant: 'primary',
+  size: 'md',
+  isLoading: false,
+  disabled: false,
+};
 
 export default Button;

@@ -1,4 +1,4 @@
-import { GoogleGenAI, LiveServerMessage, Modality, Session, LiveServerContent, createUserContent, createPartFromUri, Type } from '@google/genai';
+import { GoogleGenAI, LiveServerMessage, Modality, Session, LiveServerContent, createPartFromUri, Type } from '@google/genai';
 import { createBlob, decode, decodeAudioData } from '../utils/audioUtils';
 import { VIDEO_FRAME_RATE, VIDEO_QUALITY, MAX_RECONNECT_ATTEMPTS, RECONNECT_DELAY_BASE_MS } from '../constants';
 import type { GeminiLiveAICallbacks, SessionAnalysisResult, SupabaseTranscript } from '../types';
@@ -158,8 +158,8 @@ export class GeminiLiveAI {
       this.callbacks.onRecordingStateChange(false);
       // Attempt reconnect for generic errors, not for auth/permission issues, and only if not disposed.
       if (!errorMessage.toLowerCase().includes("api key") &&
-          !errorMessage.toLowerCase().includes("permission denied") &&
-          !this.isDisposed) {
+        !errorMessage.toLowerCase().includes("permission denied") &&
+        !this.isDisposed) {
         this.disconnectAndReconnect(RECONNECT_DELAY_BASE_MS * Math.pow(2, this.reconnectAttempts));
       }
     }
@@ -186,7 +186,9 @@ export class GeminiLiveAI {
     // Handle interruption signal from server
     if (serverContent?.interrupted) {
       this.stopAllPlayingAudio();
-      if (!this.isDisposed) this.callbacks.onStatusUpdate('Input interrupted by server.');
+      if (!this.isDisposed) {
+        this.callbacks.onStatusUpdate('Input interrupted by server.');
+      }
     }
 
     // Handle user transcript updates
@@ -230,7 +232,9 @@ export class GeminiLiveAI {
         1      // Mono channel
       );
 
-      if (this.isDisposed || audioBuffer.length === 0) return; // Don't play if disposed or buffer is empty.
+      if (this.isDisposed || audioBuffer.length === 0) {
+        return;
+      } // Don't play if disposed or buffer is empty.
 
       const source = this.outputAudioContext.createBufferSource();
       source.buffer = audioBuffer;
@@ -242,7 +246,9 @@ export class GeminiLiveAI {
       this.nextStartTime += audioBuffer.duration; // Schedule next audio after this one finishes
       this.sources.add(source); // Add to active sources set
     } catch (e: unknown) {
-      if (this.isDisposed) return;
+      if (this.isDisposed) {
+        return;
+      }
       console.error('Error processing received AI audio:', e);
       this.callbacks.onErrorUpdate(`Failed to play AI audio: ${(e as Error).message}`);
     }
@@ -284,7 +290,7 @@ export class GeminiLiveAI {
       this.stopVideoFrameCapture();
     }
   }
-  
+
   /**
    * Checks if audio or video recording/capture is currently active.
    * @returns True if recording (audio ScriptProcessorNode active) or video capture (interval active) is ongoing.
@@ -323,7 +329,9 @@ export class GeminiLiveAI {
         return;
       }
       this.callbacks.onStatusUpdate('Session re-established. Proceeding with recording.');
-      if(!this.isDisposed) this.callbacks.onErrorUpdate(''); // Clear previous error messages
+      if (!this.isDisposed) {
+        this.callbacks.onErrorUpdate('');
+      } // Clear previous error messages
     }
 
     // Resume audio contexts if they were suspended (e.g., by browser policies).
@@ -331,7 +339,9 @@ export class GeminiLiveAI {
       this.inputAudioContext.state === 'suspended' ? this.inputAudioContext.resume() : Promise.resolve(),
       this.outputAudioContext.state === 'suspended' ? this.outputAudioContext.resume() : Promise.resolve(),
     ]);
-    if (this.isDisposed) return; // Check again after async operations
+    if (this.isDisposed) {
+      return;
+    } // Check again after async operations
 
     this.callbacks.onStatusUpdate('Requesting device access (microphone/camera)...');
     try {
@@ -372,7 +382,9 @@ export class GeminiLiveAI {
       this.callbacks.onRecordingStateChange(true);
       this.callbacks.onStatusUpdate('🔴 Recording...');
     } catch (err: unknown) {
-      if (this.isDisposed) return;
+      if (this.isDisposed) {
+        return;
+      }
       const errorMessage = (err instanceof Error) ? err.message : 'Unknown microphone/camera access error';
       console.error('Error starting recording (device access):', err);
       this.callbacks.onErrorUpdate(`Device error: ${errorMessage}`);
@@ -389,14 +401,20 @@ export class GeminiLiveAI {
    * @param audioProcessingEvent - The `AudioProcessingEvent` containing audio data.
    */
   private handleAudioProcess(audioProcessingEvent: AudioProcessingEvent): void {
-    if (this.isDisposed || !this.session || !this.scriptProcessorNode) return;
+    if (this.isDisposed || !this.session || !this.scriptProcessorNode) {
+      return;
+    }
     // Get PCM data (Float32Array) from the input buffer for the first channel.
     const pcmData = audioProcessingEvent.inputBuffer.getChannelData(0);
     try {
       // Create a blob (base64 encoded Int16 PCM) and send it to the session.
-      if (this.session) this.session.sendRealtimeInput({ media: createBlob(pcmData) });
+      if (this.session) {
+        this.session.sendRealtimeInput({ media: createBlob(pcmData) });
+      }
     } catch (e: unknown) {
-      if (this.isDisposed) return;
+      if (this.isDisposed) {
+        return;
+      }
       const errorMessage = (e instanceof Error) ? e.message : 'Unknown error sending audio data';
       console.error("Error sending audio data to Gemini:", e);
       this.callbacks.onErrorUpdate(`Error sending audio: ${errorMessage}`);
@@ -410,7 +428,9 @@ export class GeminiLiveAI {
    * frames at a specified rate.
    */
   private startVideoFrameCapture(): void {
-    if (!this.mediaStream || !this.session || this.videoFrameCaptureIntervalId || !this.isVideoTrackGloballyEnabled) return;
+    if (!this.mediaStream || !this.session || this.videoFrameCaptureIntervalId || !this.isVideoTrackGloballyEnabled) {
+      return;
+    }
 
     const videoTrack = this.mediaStream.getVideoTracks().find(t => t.enabled);
     if (!videoTrack) { // No enabled video track found
@@ -451,40 +471,50 @@ export class GeminiLiveAI {
         // Convert canvas content to Blob (JPEG)
         this.canvasElement.toBlob(this.handleVideoBlob.bind(this), 'image/jpeg', VIDEO_QUALITY);
       } catch (e: unknown) {
-        if (this.isDisposed) return;
+        if (this.isDisposed) {
+          return;
+        }
         this.handleVideoProcessingError("Error capturing or drawing video frame to canvas", e);
       }
     }, 1000 / VIDEO_FRAME_RATE); // Interval based on desired frame rate
   }
-  
+
   /**
    * Handles the video frame Blob from `canvas.toBlob()`.
    * Reads the Blob as a Base64 data URL and sends it to the Gemini session.
    * @param blob - The video frame Blob (image/jpeg), or null if conversion failed.
    */
   private async handleVideoBlob(blob: globalThis.Blob | null): Promise<void> { // Use globalThis.Blob for clarity
-      if (this.isDisposed || !this.session || !blob) return;
-      try {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          if (this.isDisposed || !this.session) return;
-          try {
-            const resultString = reader.result as string;
-            // Basic validation for Data URL format
-            if (!resultString || !resultString.startsWith('data:image/jpeg;base64,')) {
-              throw new Error("Invalid video frame data URL format.");
-            }
-            const base64Data = resultString.split(',')[1];
-            // Send video frame data to the session
-            if (this.session) this.session.sendRealtimeInput({ video: { data: base64Data, mimeType: 'image/jpeg' } });
-          } catch(e) { this.handleVideoProcessingError("Error processing video frame from FileReader", e); }
-        };
-        reader.onerror = (errorEvent) => { // Handle FileReader specific errors
-             if (this.isDisposed) return;
-             this.handleVideoProcessingError("FileReader error for video blob", errorEvent.target?.error);
-        };
-        reader.readAsDataURL(blob);
-      } catch (e) { this.handleVideoProcessingError("Error creating FileReader for video blob", e); }
+    if (this.isDisposed || !this.session || !blob) {
+      return;
+    }
+    try {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        if (this.isDisposed || !this.session) {
+          return;
+        }
+        try {
+          const resultString = reader.result as string;
+          // Basic validation for Data URL format
+          if (!resultString || !resultString.startsWith('data:image/jpeg;base64,')) {
+            throw new Error("Invalid video frame data URL format.");
+          }
+          const base64Data = resultString.split(',')[1];
+          // Send video frame data to the session
+          if (this.session) {
+            this.session.sendRealtimeInput({ video: { data: base64Data, mimeType: 'image/jpeg' } });
+          }
+        } catch (e) { this.handleVideoProcessingError("Error processing video frame from FileReader", e); }
+      };
+      reader.onerror = (errorEvent) => { // Handle FileReader specific errors
+        if (this.isDisposed) {
+          return;
+        }
+        this.handleVideoProcessingError("FileReader error for video blob", errorEvent.target?.error);
+      };
+      reader.readAsDataURL(blob);
+    } catch (e) { this.handleVideoProcessingError("Error creating FileReader for video blob", e); }
   }
 
   /**
@@ -493,11 +523,13 @@ export class GeminiLiveAI {
    * @param error - The actual error object or details.
    */
   private handleVideoProcessingError(message: string, error?: unknown): void {
-    if (this.isDisposed) return;
+    if (this.isDisposed) {
+      return;
+    }
     const errorDetails = (error instanceof Error) ? error.message : String(error || "Unknown error");
     console.error(`${message}:`, errorDetails);
     // Provide a concise error message to the UI callback.
-    this.callbacks.onErrorUpdate(`${message.substring(0,30)}: ${errorDetails.substring(0, 70)}`);
+    this.callbacks.onErrorUpdate(`${message.substring(0, 30)}: ${errorDetails.substring(0, 70)}`);
   }
 
   /**
@@ -516,7 +548,9 @@ export class GeminiLiveAI {
    */
   private cleanupVideoFrameCaptureResources(): void {
     if (this.videoElement) {
-      if (!this.videoElement.paused) this.videoElement.pause();
+      if (!this.videoElement.paused) {
+        this.videoElement.pause();
+      }
       this.videoElement.srcObject = null; // Release media stream from element
       this.videoElement = null; // Allow GC
     }
@@ -529,10 +563,14 @@ export class GeminiLiveAI {
    */
   public stopRecording(): void {
     if (!this.isRecordingActive()) { // If not recording, no action needed.
-      if (!this.isDisposed) this.callbacks.onStatusUpdate('Not currently recording.');
+      if (!this.isDisposed) {
+        this.callbacks.onStatusUpdate('Not currently recording.');
+      }
       return;
     }
-    if (!this.isDisposed) this.callbacks.onStatusUpdate('Stopping recording...');
+    if (!this.isDisposed) {
+      this.callbacks.onStatusUpdate('Stopping recording...');
+    }
 
     this.stopVideoFrameCapture(); // Stop video capture first
     this.cleanupAudioRecordingResources(); // Then audio resources
@@ -544,7 +582,7 @@ export class GeminiLiveAI {
       this.callbacks.onMediaStreamAvailable(null); // Clear media stream state in UI
     }
   }
-  
+
   /**
    * Cleans up resources specifically related to audio recording (ScriptProcessorNode, MediaStreamAudioSourceNode).
    */
@@ -568,7 +606,7 @@ export class GeminiLiveAI {
     this.mediaStream?.getTracks().forEach(track => track.stop()); // Stop all tracks (mic, camera)
     this.mediaStream = null;
   }
-  
+
   /**
    * General cleanup utility called during recording stop or error states.
    * Ensures all recording-related resources are released.
@@ -584,7 +622,9 @@ export class GeminiLiveAI {
    * and attempts to establish a new one.
    */
   public async reset(): Promise<void> {
-    if (this.isDisposed) return;
+    if (this.isDisposed) {
+      return;
+    }
     this.callbacks.onStatusUpdate('Resetting session...');
     this.stopRecording(); // Stop any active recording and clean up resources
     this.stopAllPlayingAudio(); // Stop any AI voice output
@@ -596,7 +636,9 @@ export class GeminiLiveAI {
     this.reconnectAttempts = 0; // Reset reconnect counter for the new session
 
     await this.connect(); // Attempt to establish a new session
-    if (this.isDisposed) return;
+    if (this.isDisposed) {
+      return;
+    }
 
     // Update UI based on whether the new session was established
     this.callbacks.onStatusUpdate(this.session ? 'Session reset. Ready.' : 'Session reset. Failed to reconnect.');
@@ -610,7 +652,9 @@ export class GeminiLiveAI {
    * @param delayMs - The delay in milliseconds before attempting to reconnect.
    */
   private disconnectAndReconnect(delayMs = 0): void {
-    if (this.isDisposed) return;
+    if (this.isDisposed) {
+      return;
+    }
     this.stopRecording(); // Ensure recording is stopped before attempting to close/reopen session
 
     if (this.session) {
@@ -635,7 +679,9 @@ export class GeminiLiveAI {
     }
 
     setTimeout(() => {
-      if (!this.isDisposed) this.connect(); // Attempt connection after delay
+      if (!this.isDisposed) {
+        this.connect();
+      } // Attempt connection after delay
     }, actualDelay);
   }
 
@@ -650,11 +696,13 @@ export class GeminiLiveAI {
    * This should be called when the service is no longer needed (e.g., component unmount).
    */
   public dispose(): void {
-    if (this.isDisposed) return;
+    if (this.isDisposed) {
+      return;
+    }
     this.isDisposed = true;
     console.log("Disposing GeminiLiveAI instance...");
     this.callbacks.onStatusUpdate('Disposing GeminiLiveAI instance...');
-    
+
     this.stopRecording(); // This handles recording-specific resources
     this.stopAllPlayingAudio(); // Stop AI voice output
 
@@ -691,11 +739,19 @@ export async function analyzeSessionWithGemini({
   transcripts,
   audioUrl,
   sessionId,
+  persona,
+  systemInstruction,
+  started_at,
+  ended_at,
 }: {
   videoUrl?: string;
   transcripts: SupabaseTranscript[];
   audioUrl?: string;
   sessionId?: string; // For persistence
+  persona?: string;
+  systemInstruction?: string;
+  started_at?: string | number | Date;
+  ended_at?: string | number | Date;
 }): Promise<SessionAnalysisResult> {
   // --- 1. Prepare transcript text ---
   const transcriptText = transcripts
@@ -704,17 +760,26 @@ export async function analyzeSessionWithGemini({
 
   // --- 1b. Calculate session duration (in seconds) ---
   let duration = 0;
-  if (transcripts.length > 1) {
+  // Prefer started_at/ended_at if available
+  if (started_at && ended_at) {
+    const start = typeof started_at === 'string' ? new Date(started_at).getTime() : (started_at instanceof Date ? started_at.getTime() : started_at);
+    const end = typeof ended_at === 'string' ? new Date(ended_at).getTime() : (ended_at instanceof Date ? ended_at.getTime() : ended_at);
+    if (!isNaN(start) && !isNaN(end) && end > start) {
+      duration = Math.max(0, Math.round((end - start) / 1000));
+    }
+  }
+  // Fallback to transcript timestamps
+  if (duration === 0 && transcripts.length > 1) {
     const first = transcripts[0].timestamp_ms;
     const last = transcripts[transcripts.length - 1].timestamp_ms;
     duration = Math.max(0, Math.round((last - first) / 1000));
   }
-  // If videoUrl is present, try to get video duration
-  if (videoUrl) {
+  // Fallback to video metadata (browser only)
+  if (duration === 0 && videoUrl && typeof document !== 'undefined') {
     try {
       const video = document.createElement('video');
       video.src = videoUrl;
-      await new Promise((resolve, reject) => {
+      await new Promise((resolve) => {
         video.onloadedmetadata = () => {
           if (!isNaN(video.duration) && video.duration > 0) {
             duration = Math.round(video.duration);
@@ -723,7 +788,7 @@ export async function analyzeSessionWithGemini({
         };
         video.onerror = () => resolve(false);
       });
-    } catch {}
+    } catch { }
   }
 
   // --- 2. Prepare Gemini API client with API key ---
@@ -736,6 +801,12 @@ export async function analyzeSessionWithGemini({
 
   // --- 3. Compose prompt ---
   let prompt = `Analyze the following session.\n`;
+  if (persona) {
+    prompt += `Persona: ${persona}\n`;
+  }
+  if (systemInstruction) {
+    prompt += `System Instruction: ${systemInstruction}\n`;
+  }
   if (videoUrl) {
     prompt += `The session video is provided.\n`;
   } else if (audioUrl) {
@@ -743,22 +814,40 @@ export async function analyzeSessionWithGemini({
   }
   prompt += `Here is the transcript (speaker: text):\n${transcriptText}\n`;
   prompt += `\nSession duration (seconds): ${duration}\n`;
-  prompt += `\nPlease provide:\n- A concise summary of the session\n- Key metrics (duration, number of user/AI turns, sentiment)\n- 3-5 key insights\n- A quiz (2-3 questions with answers)\n- Any visual or audio highlights if possible\nReturn the result as JSON with fields: summary, keyMetrics, insights, quiz, visualHighlights, audioHighlights. The duration in keyMetrics should match the provided session duration.`;
+
+  // Persona-specific metrics
+  if (persona === 'Interview Coach') {
+    prompt += `\nAdditionally, analyze the candidate's use of the STAR method (Situation, Task, Action, Result) as a percentage (0-100), and rate their clarity on a scale of 1-10. Return these as 'starUsage' and 'clarity' in keyMetrics.`;
+  } else if (persona === 'Dating Coach') {
+    prompt += `\nAdditionally, rate the user's confidence and authenticity on a scale of 1-10. Return these as 'confidence' and 'authenticity' in keyMetrics.`;
+  } else if (persona === 'Motivational Mentor') {
+    prompt += `\nAdditionally, rate the user's motivation and confidence on a scale of 1-10. Return these as 'motivation' and 'confidence' in keyMetrics.`;
+  } else if (persona === 'Friendly Conversationalist') {
+    prompt += `\nAdditionally, rate the user's engagement and comfort level on a scale of 1-10. Return these as 'engagement' and 'comfort' in keyMetrics.`;
+  } else if (persona === 'Tech Support Agent') {
+    prompt += `\nAdditionally, rate the user's understanding of the solution and frustration level on a scale of 1-10. Return these as 'understanding' and 'frustration' in keyMetrics.`;
+  } else if (persona === 'Language Tutor') {
+    prompt += `\nAdditionally, rate the user's language accuracy (0-100 percent) and fluency (1-10). Return these as 'accuracy' and 'fluency' in keyMetrics.`;
+  } else if (persona === 'Fitness Coach') {
+    prompt += `\nAdditionally, rate the user's energy and goal clarity on a scale of 1-10. Return these as 'energy' and 'goalClarity' in keyMetrics.`;
+  } else if (persona === 'Standup Comedian') {
+    prompt += `\nAdditionally, rate the user's laughter (1-10) and engagement (1-10). Return these as 'laughter' and 'engagement' in keyMetrics.`;
+  }
+
+  prompt += `\nPlease provide:\n- A concise summary of the session\n- Key metrics (duration, number of user/AI turns, sentiment, and any persona-specific metrics)\n- 3-5 key insights\n- A quiz (2-3 questions with answers)\n- Any visual or audio highlights if possible\nReturn the result as JSON with fields: summary, keyMetrics, insights, quiz, visualHighlights, audioHighlights. The duration in keyMetrics should match the provided session duration. Persona-specific metrics should be included in keyMetrics if requested.`;
 
   // --- 4. Prepare Gemini content parts ---
   let contents: any[] = [];
   let filePart: any = null;
   let mimeType = '';
-  let isYouTube = false;
-  if (videoUrl) {
+  if (typeof videoUrl === 'string') {
     if (videoUrl.startsWith('http') && videoUrl.includes('youtube.com')) {
-      // YouTube URL
-      isYouTube = true;
       filePart = {
         fileData: {
           fileUri: videoUrl,
         },
       };
+      contents = [filePart, { text: prompt }];
     } else {
       // Assume direct video file (webm/mp4)
       mimeType = videoUrl.endsWith('.mp4') ? 'video/mp4' : 'video/webm';
@@ -768,10 +857,14 @@ export async function analyzeSessionWithGemini({
         file: new File([videoBlob], 'session-video', { type: mimeType }),
         config: { mimeType },
       });
-      filePart = createPartFromUri(myfile.uri, myfile.mimeType);
+      if (!myfile.name) {
+        throw new Error('Gemini file upload did not return a file name.');
+      }
+      await waitForGeminiFileActive(ai, myfile.name);
+      filePart = createPartFromUri(myfile.uri ?? '', myfile.mimeType ?? '');
+      contents = [filePart, { text: prompt }];
     }
-    contents = [filePart, { text: prompt }];
-  } else if (audioUrl) {
+  } else if (typeof audioUrl === 'string') {
     // Audio file
     mimeType = audioUrl.endsWith('.mp3') ? 'audio/mp3' : 'audio/mpeg';
     const audioBlob = await fetch(audioUrl).then(r => r.blob());
@@ -779,7 +872,11 @@ export async function analyzeSessionWithGemini({
       file: new File([audioBlob], 'session-audio', { type: mimeType }),
       config: { mimeType },
     });
-    filePart = createPartFromUri(myfile.uri, myfile.mimeType);
+    if (!myfile.name) {
+      throw new Error('Gemini file upload did not return a file name.');
+    }
+    await waitForGeminiFileActive(ai, myfile.name);
+    filePart = createPartFromUri(myfile.uri ?? '', myfile.mimeType ?? '');
     contents = [filePart, { text: prompt }];
   } else {
     // Transcript only
@@ -868,7 +965,8 @@ export async function analyzeSessionWithGemini({
       // Update the session row with analysis in metadata
       await supabase.from('sessions').update({
         metadata: {
-          ...(typeof sessionId === 'string' ? {} : {}), // placeholder for other metadata
+          persona: persona || null,
+          systemInstruction: systemInstruction || null,
           analysis: result,
         },
       }).eq('id', sessionId);
@@ -878,6 +976,24 @@ export async function analyzeSessionWithGemini({
   }
 
   // --- 8. Return result ---
-  if (!result) throw new Error('No analysis result from Gemini');
+  if (!result) {
+    throw new Error('No analysis result from Gemini');
+  }
   return result;
+}
+
+// Helper: Wait for Gemini file to become ACTIVE
+async function waitForGeminiFileActive(ai: any, fileName: string, maxWaitMs = 10000, pollMs = 500) {
+  const start = Date.now();
+  while (Date.now() - start < maxWaitMs) {
+    const file = await ai.files.get(fileName);
+    if (file.state === 'ACTIVE') {
+      return file;
+    }
+    if (file.state === 'FAILED') {
+      throw new Error('Gemini file upload failed: ' + (file.errorMessage || 'Unknown error'));
+    }
+    await new Promise(res => setTimeout(res, pollMs));
+  }
+  throw new Error('Gemini file did not become ACTIVE in time. Please try again.');
 }
