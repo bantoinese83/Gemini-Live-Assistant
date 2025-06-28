@@ -318,8 +318,10 @@ const App: React.FC = () => {
       setTimeout(() => setStatusOverride(null), 2000);
       fetchHistory();
       fetchDashboardData();
+      setToast({ message: 'Session saved!', type: 'success' });
     } catch (err: any) {
       setSaveError('Failed to save media: ' + (err.message || err.toString()));
+      setToast({ message: 'Failed to save session: ' + (err.message || err.toString()), type: 'error' });
     } finally {
       setIsSaving(false);
       setSavingMode('none');
@@ -460,7 +462,22 @@ const App: React.FC = () => {
   // Handler for when a session is selected from history
   const handleSessionClick = async (session: SupabaseSession) => {
     setSelectedSession(session);
-    setPlaybackVideoUrl(session.video_url || null);
+    if (session.video_url) {
+      try {
+        const { data, error } = await supabase.storage
+          .from('session-videos')
+          .createSignedUrl(session.video_url, 60 * 60);
+        if (!error && data?.signedUrl) {
+          setPlaybackVideoUrl(data.signedUrl);
+        } else {
+          setPlaybackVideoUrl(null);
+        }
+      } catch {
+        setPlaybackVideoUrl(null);
+      }
+    } else {
+      setPlaybackVideoUrl(null);
+    }
     if (session.audio_url) {
       try {
         const { data, error } = await supabase.storage
@@ -615,6 +632,7 @@ const App: React.FC = () => {
         },
         type: 'info',
       });
+      setToast({ message: 'Session deleted!', type: 'success' });
     } catch (err: any) {
       setToast({ message: 'Failed to delete session: ' + (err.message || err.toString()), type: 'error' });
       throw err;

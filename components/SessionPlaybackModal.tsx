@@ -181,7 +181,7 @@ const SessionPlaybackModal: React.FC<SessionPlaybackModalProps> = ({
     return null;
   }
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center" onClick={onClose}>
       <div
         ref={modalRef}
         tabIndex={-1}
@@ -189,6 +189,7 @@ const SessionPlaybackModal: React.FC<SessionPlaybackModalProps> = ({
         role="dialog"
         aria-label="Session Playback Modal"
         className="bg-[var(--color-background-secondary)] rounded-2xl shadow-2xl max-w-2xl w-full relative flex flex-col gap-4 max-h-[90vh] overflow-y-auto p-4 md:p-6"
+        onClick={e => e.stopPropagation()}
       >
         <button
           onClick={onClose}

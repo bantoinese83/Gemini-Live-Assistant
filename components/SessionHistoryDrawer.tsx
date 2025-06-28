@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import HoverVideoPlayer from 'react-hover-video-player';
 import type { SupabaseSession } from '../types';
-import { Trash2, Volume2 } from 'lucide-react';
+import { Trash2, Volume2, MessageSquare } from 'lucide-react';
 
 interface SessionHistoryDrawerProps {
   open: boolean;
@@ -193,7 +193,7 @@ const SessionHistoryDrawer: React.FC<SessionHistoryDrawerProps> = ({
             {sessions.map(session => (
               <li
                 key={session.id}
-                className={`relative group bg-gradient-to-br from-[var(--color-background-tertiary)] to-[var(--color-background-secondary)] rounded-2xl p-4 shadow-lg border border-[var(--color-border-primary)] transition-all duration-200 hover:scale-[1.035] hover:shadow-2xl hover:border-accent-400 cursor-pointer overflow-hidden focus-within:ring-2 focus-within:ring-accent-400`}
+                className={`relative group bg-gradient-to-br from-[var(--color-background-tertiary)] to-[var(--color-background-secondary)] rounded-2xl p-4 shadow-lg border border-[var(--color-border-primary)] transition-all duration-200 hover:scale-[1.035] hover:shadow-2xl hover:border-accent-400 cursor-pointer overflow-hidden focus-within:ring-2 focus-within:ring-accent-400 hover:bg-[var(--color-background-tertiary-light)]`}
                 onClick={() => !selectMode && onSessionClick(session)}
                 tabIndex={0}
                 onKeyDown={e => handleKeyDown(e, () => !selectMode && onSessionClick(session))}
@@ -214,10 +214,10 @@ const SessionHistoryDrawer: React.FC<SessionHistoryDrawerProps> = ({
                 {/* Animated border effect */}
                 <div className="pointer-events-none absolute inset-0 rounded-2xl border-2 border-transparent group-hover:border-accent-400 group-hover:shadow-[0_0_24px_2px_var(--color-accent-sky)] transition-all duration-300" />
                 <div className="flex items-center gap-3 mb-2">
-                  <span className="font-semibold text-accent-400 text-base drop-shadow" title={session.persona}> {/* Tooltip */}
+                  <span className="font-semibold text-accent-400 text-base drop-shadow" title={session.personaDescription || session.persona}> {/* Tooltip */}
                     <span tabIndex={0} aria-label={`Persona: ${session.persona}`}>{session.persona}</span>
                   </span>
-                  <span className="text-xs text-[var(--color-text-muted)]">{new Date(session.started_at).toLocaleString()}</span>
+                  <span className="text-xs text-[var(--color-text-muted)]" title={new Date(session.started_at).toLocaleString()}>{new Date(session.started_at).toLocaleString()}</span>
                 </div>
                 <div className="flex items-center gap-3">
                   <div className="flex-shrink-0 w-20 h-12 flex items-center justify-center rounded-lg overflow-hidden bg-slate-800">
@@ -250,6 +250,18 @@ const SessionHistoryDrawer: React.FC<SessionHistoryDrawerProps> = ({
                   <div className="flex-1 flex flex-col gap-1 ml-2">
                     <span className="text-sm font-medium text-[var(--color-text-primary)] truncate" title={session.id} tabIndex={0} aria-label={`Session ID: ${session.id}`}>Session ID: {session.id.slice(0, 8)}...</span>
                     <span className="text-xs text-[var(--color-text-muted)] truncate">Started: {new Date(session.started_at).toLocaleDateString()}</span>
+                    {/* Preview snippet of transcript or first message */}
+                    {session.previewSnippet ? (
+                      <span className="text-xs text-slate-500 italic truncate flex items-center gap-1" title={session.previewSnippet}>
+                        <MessageSquare size={14} className="text-slate-400 mr-1" />
+                        {session.previewSnippet}
+                      </span>
+                    ) : session.transcripts && session.transcripts.length > 0 ? (
+                      <span className="text-xs text-slate-400 italic truncate flex items-center gap-1" title={session.transcripts[0].text}>
+                        <MessageSquare size={14} className="text-slate-300 mr-1" />
+                        {session.transcripts[0].text.split(' ').slice(0, 12).join(' ')}{session.transcripts[0].text.split(' ').length > 12 ? '…' : ''}
+                      </span>
+                    ) : null}
                   </div>
                   {!selectMode && (pendingDeleteId === session.id ? (
                     <div className="flex items-center gap-2 ml-2">
