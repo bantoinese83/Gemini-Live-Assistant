@@ -5,4 +5,120 @@
   border-radius: 0.375rem !important;
   display: block;
   margin: 0 auto;
+}
+
+@import url('https://fonts.googleapis.com/css?family=Open+Sans:400,800,700,300');
+@import url('https://fonts.googleapis.com/css?family=Squada+One');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Inter:wght@400;600&display=swap');
+
+body {
+  font-family: 'Inter', 'Open Sans', 'Squada One', Arial, sans-serif;
+}
+
+.custom-header, .custom-logo {
+  font-family: 'Orbitron', 'Open Sans', 'Squada One', Arial, sans-serif;
+}
+
+.custom-header {
+  background: #eee;
+  /* Optionally add a subtle pattern or gradient here */
+  border-bottom: 4px double #AAA;
+}
+
+.custom-footer {
+  background: #eee;
+  border-top: 4px double #AAA;
+}
+
+.custom-logo {
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: -3px;
+  line-height: 1;
+  text-shadow:
+    #EDEDED 3px 2px 0,
+    0 4px 12px #bbb,
+    2px 2px 0 #fff,
+    4px 4px 0 #999;
+  position: relative;
+  /* 3D/outline effect */
+}
+
+.custom-logo::after {
+  content: 'Gemini Live Assistant';
+  position: absolute;
+  left: 8px;
+  top: 32px;
+  background-image: linear-gradient(135deg, transparent 0%, transparent 25%, #555 25%, #555 50%, transparent 50%, transparent 75%, #555 75%);
+  background-size: 4px 4px;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  z-index: -5;
+  display: block;
+  text-shadow: none;
+  pointer-events: none;
+}
+
+@media (max-width: 900px) {
+  .custom-logo {
+    font-size: 60px !important;
+  }
+}
+@media (max-width: 600px) {
+  .custom-logo {
+    font-size: 36px !important;
+  }
+}
+
+/* Morphing/Glitching Border for AI Bot */
+.ai-bot-morph-border {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  border: 4px solid var(--color-accent-sky);
+  border-radius: var(--morph-radius, 18px);
+  box-shadow: 0 0 32px 0 var(--color-accent-sky), 0 0 0 4px var(--color-accent-teal);
+  transition: border-radius 0.3s cubic-bezier(.4,2,.6,1), filter 0.2s, box-shadow 0.2s;
+  filter: var(--morph-filter, none);
+  animation: none;
+}
+
+.ai-bot-container.is-speaking .ai-bot-morph-border {
+  animation: morph-glitch 1.2s infinite cubic-bezier(.4,0,.6,1) alternate;
+  --morph-radius: 40% 60% 60% 40%/40% 40% 60% 60%;
+  --morph-filter: drop-shadow(0 0 12px var(--color-accent-sky)) contrast(1.2) brightness(1.1);
+}
+
+@keyframes morph-glitch {
+  0% {
+    border-radius: 18px;
+    filter: none;
+    box-shadow: 0 0 32px 0 var(--color-accent-sky), 0 0 0 4px var(--color-accent-teal);
+  }
+  20% {
+    border-radius: 40% 60% 60% 40%/40% 40% 60% 60%;
+    filter: blur(1px) contrast(1.2);
+    box-shadow: 0 0 48px 4px var(--color-accent-sky), 0 0 0 8px var(--color-accent-teal);
+  }
+  40% {
+    border-radius: 60% 40% 40% 60%/60% 60% 40% 40%;
+    filter: hue-rotate(10deg) brightness(1.2);
+    box-shadow: 0 0 32px 0 var(--color-accent-sky), 0 0 0 4px var(--color-accent-teal);
+  }
+  60% {
+    border-radius: 30% 70% 70% 30%/30% 30% 70% 70%;
+    filter: blur(2px) contrast(1.3) hue-rotate(-10deg);
+    box-shadow: 0 0 64px 8px var(--color-accent-sky), 0 0 0 12px var(--color-accent-teal);
+  }
+  80% {
+    border-radius: 50% 50% 60% 40%/40% 60% 50% 50%;
+    filter: none;
+    box-shadow: 0 0 32px 0 var(--color-accent-sky), 0 0 0 4px var(--color-accent-teal);
+  }
+  100% {
+    border-radius: 18px;
+    filter: none;
+    box-shadow: 0 0 32px 0 var(--color-accent-sky), 0 0 0 4px var(--color-accent-teal);
+  }
 } 
