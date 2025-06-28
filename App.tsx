@@ -144,10 +144,15 @@ const App: React.FC = () => {
 
   // Helper to get combined audio+video stream and video-only stream
   const getCombinedMediaStream = async (videoEnabled: boolean) => {
+    const audioConstraints = {
+      noiseSuppression: true,
+      echoCancellation: true,
+      autoGainControl: true
+    };
     if (videoEnabled) {
       // Get video and audio streams separately
       const videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      const audioStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+      const audioStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: audioConstraints });
       // Combine tracks
       const combinedStream = new MediaStream([
         ...videoStream.getVideoTracks(),
@@ -156,7 +161,7 @@ const App: React.FC = () => {
       return { combinedStream, videoStream };
     } else {
       // Audio only
-      const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const audioStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
       return { combinedStream: audioStream, videoStream: null };
     }
   };
