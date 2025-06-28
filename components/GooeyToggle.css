@@ -1,0 +1,94 @@
+/* Gooey Toggle Switch Styles */
+.gooey-toggle-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 90px;
+}
+
+.gooey-toggle {
+  position: relative;
+  width: 72px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  outline: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 0;
+  filter: url(#goo);
+  transition: background 0.2s;
+}
+
+.gooey-track {
+  position: absolute;
+  left: 0; top: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #38bdf8 0%, #14b8a6 100%);
+  opacity: 0.25;
+  z-index: 1;
+  transition: background 0.3s;
+}
+.gooey-toggle--off .gooey-track {
+  background: #64748b;
+  opacity: 0.18;
+}
+
+.gooey-thumb {
+  position: absolute;
+  top: 50%;
+  left: 6px;
+  width: 32px;
+  height: 32px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px #14b8a655;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  transform: translateY(-50%) translateX(0);
+  transition: transform 0.35s cubic-bezier(.7,1.7,.7,1), background 0.2s;
+}
+.gooey-toggle--on .gooey-thumb {
+  transform: translateY(-50%) translateX(32px) scale(1.08, 0.98);
+  background: #e0fdfa;
+}
+.gooey-toggle--off .gooey-thumb {
+  transform: translateY(-50%) translateX(0) scale(1,1);
+  background: #fff;
+}
+
+.gooey-blob {
+  position: absolute;
+  top: 50%;
+  left: 6px;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #14b8a6;
+  opacity: 0.18;
+  z-index: 1;
+  pointer-events: none;
+  transform: translateY(-50%) scale(0.7,1);
+  transition: transform 0.35s cubic-bezier(.7,1.7,.7,1), opacity 0.2s;
+}
+.gooey-toggle--on .gooey-blob {
+  transform: translateY(-50%) translateX(32px) scale(1.2,1.05);
+  opacity: 0.22;
+}
+.gooey-toggle--off .gooey-blob {
+  transform: translateY(-50%) translateX(0) scale(0.7,1);
+  opacity: 0.18;
+}
+
+.gooey-toggle:focus-visible {
+  box-shadow: 0 0 0 3px #38bdf8cc;
+}
+
+.gooey-thumb svg {
+  transition: color 0.2s;
+} 

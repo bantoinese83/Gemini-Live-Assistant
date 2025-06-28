@@ -1,8 +1,11 @@
 import React from 'react';
-import { PlayIcon, StopIcon, ResetIcon, VideoOnIcon, VideoOffIcon } from './icons';
+import { Play, Square, RotateCcw, Video, VideoOff, User2, Heart, Rocket, Smile, Laptop, Languages, Dumbbell, Mic } from 'lucide-react';
 import Button from './common/Button';
 import type { IconProps } from '../types'; // IconProps is used by Button for its icon elements
 import { AI_PERSONA_PRESETS } from '../types';
+import './PlayResetButton.css'; // (Create this CSS file for custom styles)
+import './GooeyToggle.css'; // Add gooey toggle styles
+import GooeySvgToggle from './GooeySvgToggle';
 
 /**
  * Props for the ControlPanel component.
@@ -27,6 +30,18 @@ interface ControlPanelProps {
   selectedPersonaId: string;
   onPersonaChange: (personaId: string) => void;
 }
+
+// Persona icon mapping
+const personaIcons: Record<string, React.ReactNode> = {
+  'interview-coach': <User2 size={28} className="mb-1 text-accent-400" aria-label="Interview Coach" />,
+  'dating-coach': <Heart size={28} className="mb-1 text-accent-400" aria-label="Dating Coach" />,
+  'motivational-mentor': <Rocket size={28} className="mb-1 text-accent-400" aria-label="Motivational Mentor" />,
+  'friendly-conversationalist': <Smile size={28} className="mb-1 text-accent-400" aria-label="Friendly Conversationalist" />,
+  'tech-support-agent': <Laptop size={28} className="mb-1 text-accent-400" aria-label="Tech Support Agent" />,
+  'language-tutor': <Languages size={28} className="mb-1 text-accent-400" aria-label="Language Tutor" />,
+  'fitness-coach': <Dumbbell size={28} className="mb-1 text-accent-400" aria-label="Fitness Coach" />,
+  'standup-comedian': <Mic size={28} className="mb-1 text-accent-400" aria-label="Standup Comedian" />,
+};
 
 /**
  * ControlPanel component provides UI controls for starting/stopping recording,
@@ -67,7 +82,7 @@ const ControlPanel: React.FC<ControlPanelProps> = React.memo(({
             aria-label={persona.name}
             onClick={() => onPersonaChange(persona.id)}
           >
-            <span className="text-2xl mb-1">{persona.emoji}</span>
+            <span>{personaIcons[persona.id]}</span>
             <span className="font-semibold text-sm mb-0.5 text-accent-400">{persona.name}</span>
             <span className="text-xs text-slate-400 text-center leading-tight">{persona.description}</span>
           </button>
@@ -80,58 +95,64 @@ const ControlPanel: React.FC<ControlPanelProps> = React.memo(({
     <div className="space-y-5 p-4 bg-[var(--color-background-secondary)] rounded-2xl shadow-2xl border border-[var(--color-border-primary)] max-w-md mx-auto transition-all duration-300">
       {renderPersonaPicker()}
       <hr className="my-2 border-[var(--color-border-primary)] opacity-40" />
-      <div className="w-full">
-        <Button
-          {...commonButtonProps}
-          variant={isRecording ? 'danger' : 'success'}
-          onClick={isRecording ? onStopRecording : onStartRecording}
-          disabled={isDisabledBySystem || (isRecording ? false : isRecording)}
-          leftIcon={isRecording ? <StopIcon {...iconProps} /> : <PlayIcon {...iconProps} />}
-          aria-label={isRecording ? 'Stop Recording' : 'Start Recording'}
-          aria-pressed={isRecording}
-          className="w-full transition-transform duration-150 hover:scale-105 focus:scale-105 shadow-md"
-        >
-          {isRecording ? 'Stop' : 'Start'}
-        </Button>
-      </div>
-      <div className="flex items-center justify-between w-full py-2">
-        <span className="font-medium text-sm text-[var(--color-text-primary)] select-none">
-          {isVideoEnabled ? 'Video On' : 'Video Off'}
-        </span>
+      {/* Start/Reset Button Row */}
+      <div className="flex flex-row items-center justify-center gap-8 my-4">
+        {/* Play Button */}
         <button
           type="button"
-          role="switch"
-          aria-checked={isVideoEnabled}
-          tabIndex={0}
-          disabled={isDisabledBySystem}
-          onClick={() => onToggleVideo(!isVideoEnabled)}
-          className={`relative inline-flex h-9 w-16 rounded-full border-2 border-[var(--color-border-primary)] transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-accent-500/70 shadow-md
-            ${isVideoEnabled ? 'bg-[var(--color-accent-teal)]' : 'bg-[var(--color-background-tertiary)]'}
-            ${isDisabledBySystem ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+          onClick={isRecording ? onStopRecording : onStartRecording}
+          disabled={isDisabledBySystem || (isRecording ? false : isRecording)}
+          aria-label={isRecording ? 'Stop Recording' : 'Start Recording'}
+          title={isRecording ? 'Stop Recording' : 'Start Recording'}
+          className={`player-btn circle-btn ${isRecording ? 'player-btn--stop' : 'player-btn--play'} ${isDisabledBySystem ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
         >
-          <span
-            className={`absolute left-1 top-1 flex items-center justify-center h-7 w-7 rounded-full bg-white shadow-lg transition-transform duration-300
-              ${isVideoEnabled ? 'translate-x-7' : 'translate-x-0'}`}
-          >
-            {isVideoEnabled ? (
-              <VideoOnIcon size={22} className="text-[var(--color-accent-teal)] transition-colors duration-300" />
-            ) : (
-              <VideoOffIcon size={22} className="text-slate-400 transition-colors duration-300" />
-            )}
+          {/* Buffering ring (optional, only when recording) */}
+          {isRecording && <span className="buffering-ring" />}
+          {/* Play triangle (SVG for sharpness) */}
+          {!isRecording && (
+            <svg width="48" height="48" viewBox="0 0 48 48" className="triangle-svg" aria-hidden="true">
+              <polygon points="18,12 38,24 18,36" fill="#fff" filter="url(#play-glow)" />
+              <defs>
+                <filter id="play-glow" x="-20%" y="-20%" width="140%" height="140%">
+                  <feDropShadow dx="0" dy="0" stdDeviation="2.5" floodColor="#fff" floodOpacity="0.7" />
+                </filter>
+              </defs>
+            </svg>
+          )}
+          {/* Stop icon (square) for recording state */}
+          {isRecording && (
+            <svg width="32" height="32" viewBox="0 0 32 32" className="stop-svg" aria-hidden="true">
+              <rect x="8" y="8" width="16" height="16" rx="4" fill="#fff" />
+            </svg>
+          )}
+        </button>
+        {/* Reset Button */}
+        <button
+          type="button"
+          onClick={onResetSession}
+          disabled={isRecording || isDisabledBySystem}
+          aria-label="Reset Session"
+          title="Reset Session"
+          className={`player-btn circle-btn player-btn--reset ${isRecording || isDisabledBySystem ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+        >
+          <span className="reset-icon-wrapper">
+            <RotateCcw size={36} className="reset-icon strong-glow" aria-hidden="true" />
           </span>
         </button>
       </div>
-      <Button
-        {...commonButtonProps}
-        variant="warning"
-        onClick={onResetSession}
-        disabled={isRecording || isDisabledBySystem}
-        leftIcon={<ResetIcon {...iconProps} />}
-        aria-label="Reset Session"
-        className="w-full transition-transform duration-150 hover:scale-105 focus:scale-105 shadow-md"
-      >
-        Reset Session
-      </Button>
+      {/* Gooey Video Toggle Row */}
+      <div className="flex items-center justify-between w-full py-2">
+        <span className={`font-semibold text-base select-none transition-colors duration-300 ${isVideoEnabled ? 'text-[var(--color-accent-teal)]' : 'text-slate-400'}`}
+          >
+          {isVideoEnabled ? 'Video On' : 'Video Off'}
+        </span>
+        <GooeySvgToggle
+          checked={isVideoEnabled}
+          onChange={onToggleVideo}
+          disabled={isDisabledBySystem}
+          ariaLabel={isVideoEnabled ? 'Turn video off' : 'Turn video on'}
+        />
+      </div>
     </div>
   );
 });

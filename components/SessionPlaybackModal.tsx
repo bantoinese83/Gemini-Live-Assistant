@@ -2,32 +2,19 @@ import React, { useRef, useState, useEffect } from "react";
 import type { SupabaseSession, SupabaseTranscript } from "../types";
 import LoadingSpinner from './LoadingSpinner';
 import type { SessionAnalysisResult } from '../types';
-import { RefreshIcon } from './icons';
+import { RotateCcw } from 'lucide-react';
 
 interface SessionPlaybackModalProps {
   open: boolean;
   session: SupabaseSession | null;
   transcripts: SupabaseTranscript[];
   videoUrl: string | null;
+  audioUrl?: string | null;
   onClose: () => void;
   sessionAnalysis?: SessionAnalysisResult | null;
   analysisLoading?: boolean;
   onReanalyze?: () => void;
 }
-
-const isWebmAudioOnly = async (url: string): Promise<boolean> => {
-  // Try to detect if the webm file is audio-only by loading metadata
-  return new Promise((resolve) => {
-    const testVideo = document.createElement("video");
-    testVideo.src = url;
-    testVideo.preload = "metadata";
-    testVideo.onloadedmetadata = () => {
-      // If videoWidth/Height are 0, it's likely audio-only
-      resolve(testVideo.videoWidth === 0 && testVideo.videoHeight === 0);
-    };
-    testVideo.onerror = () => resolve(false); // fallback: treat as video
-  });
-};
 
 const CustomAudioPlayer: React.FC<{ src: string }> = ({ src }) => {
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -60,7 +47,12 @@ const CustomAudioPlayer: React.FC<{ src: string }> = ({ src }) => {
     if (isPlaying) {
       audio.pause();
     } else {
-      audio.play();
+      audio.play().catch((err) => {
+        if (err.name !== "AbortError") {
+          // Optionally log or handle other errors
+          console.warn("Audio play error:", err);
+        }
+      });
     }
     setIsPlaying(!isPlaying);
   };
@@ -86,7 +78,10 @@ const CustomAudioPlayer: React.FC<{ src: string }> = ({ src }) => {
 
   return (
     <div className="w-full max-w-md flex flex-col items-center bg-slate-900 rounded-lg p-4 shadow-lg">
-      <audio ref={audioRef} src={src} preload="metadata" className="hidden" />
+      <audio ref={audioRef} preload="metadata" className="hidden" controls>
+        <source src={src} type="audio/webm" />
+        Your browser does not support the audio element.
+      </audio>
       <div className="flex items-center w-full gap-3">
         <button
           onClick={handlePlayPause}
@@ -140,56 +135,82 @@ const SessionPlaybackModal: React.FC<SessionPlaybackModalProps> = ({
   session,
   transcripts,
   videoUrl,
+  audioUrl,
   onClose,
   sessionAnalysis,
   analysisLoading = false,
   onReanalyze,
 }) => {
-  const [audioOnly, setAudioOnly] = useState(false);
+  const modalRef = useRef<HTMLDivElement>(null);
+  const lastActiveElement = useRef<HTMLElement | null>(null);
   useEffect(() => {
-    let active = true;
-    if (videoUrl) {
-      isWebmAudioOnly(videoUrl).then((isAudio) => {
-        if (active) {
-          setAudioOnly(isAudio);
-        }
-      });
-    } else {
-      setAudioOnly(false);
+    if (!open) {
+      return;
     }
-    return () => {
-      active = false;
+    lastActiveElement.current = document.activeElement as HTMLElement;
+    const focusable = modalRef.current?.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const first = focusable?.[0];
+    const last = focusable?.[focusable.length - 1];
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Tab' && focusable && focusable.length > 0) {
+        if (e.shiftKey) {
+                  if (document.activeElement === first) {
+                    e.preventDefault();
+                    last?.focus();
+                  }
+                }
+        else if (document.activeElement === last) {
+                    e.preventDefault();
+                    first?.focus();
+                  }
+      } else if (e.key === 'Escape') {
+        onClose();
+      }
     };
-  }, [videoUrl]);
+    first?.focus();
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      lastActiveElement.current?.focus();
+    };
+  }, [open, onClose]);
 
   if (!open || !session) {
     return null;
   }
   return (
     <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
-      <div className="bg-[var(--color-background-secondary)] rounded-2xl shadow-2xl max-w-2xl w-full relative flex flex-col gap-4 max-h-[90vh] overflow-y-auto p-4 md:p-6">
+      <div
+        ref={modalRef}
+        tabIndex={-1}
+        aria-modal="true"
+        role="dialog"
+        aria-label="Session Playback Modal"
+        className="bg-[var(--color-background-secondary)] rounded-2xl shadow-2xl max-w-2xl w-full relative flex flex-col gap-4 max-h-[90vh] overflow-y-auto p-4 md:p-6"
+      >
         <button
           onClick={onClose}
           className="absolute top-3 right-3 text-slate-400 hover:text-slate-200 text-xl font-bold"
+          aria-label="Close"
         >
           &times;
         </button>
         <h3 className="text-lg font-bold mb-2">Session Playback</h3>
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1 flex flex-col items-center justify-center">
-            {videoUrl ? (
-              audioOnly ? (
-                <CustomAudioPlayer src={videoUrl} />
-              ) : (
-                <video
-                  src={videoUrl}
-                  controls
-                  className="rounded-lg shadow-lg w-full max-w-md aspect-video bg-black"
-                />
-              )
+            {audioUrl ? (
+              <CustomAudioPlayer src={audioUrl} />
+            ) : videoUrl ? (
+              <video
+                src={videoUrl}
+                controls
+                className="rounded-lg shadow-lg w-full max-w-md aspect-video bg-black"
+              />
             ) : (
               <div className="w-full max-w-md aspect-video flex items-center justify-center bg-slate-800 rounded-lg text-slate-400 text-xs">
-                No Video
+                No Media
               </div>
             )}
           </div>
@@ -233,7 +254,7 @@ const SessionPlaybackModal: React.FC<SessionPlaybackModalProps> = ({
                 {analysisLoading ? (
                   <LoadingSpinner size={18} />
                 ) : (
-                  <RefreshIcon size={20} />
+                  <RotateCcw size={20} />
                 )}
               </button>
             )}

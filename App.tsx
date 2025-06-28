@@ -19,10 +19,11 @@ import {
   getCachedTranscripts,
   cacheTranscripts,
   deleteSessionAndData,
+  uploadSessionAudio,
 } from './services/sessionStorageService';
 import { supabase } from './services/supabaseClient';
 import type { SupabaseSession, SupabaseTranscript } from './types';
-import { HistoryIcon, AnalyticsIcon } from './components/icons';
+import { History, BarChart2 } from 'lucide-react';
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
 import { SupabaseSessionArraySchema, SupabaseTranscriptArraySchema } from './types';
@@ -33,6 +34,7 @@ import SuccessOverlay from './components/SuccessOverlay';
 import { analyzeSessionWithGemini } from './services/geminiLiveService';
 import type { SessionAnalysisResult } from './types';
 import AnalyticsDrawer from './components/AnalyticsDrawer';
+import Toast from './components/common/ErrorBoundary';
 
 /**
  * The main application component.
@@ -129,8 +131,6 @@ const App: React.FC = () => {
 
   // Success overlay state
   const [showSuccess, setShowSuccess] = useState(false);
-  // Delete confirmation state
-  const [pendingDeleteSessionId, setPendingDeleteSessionId] = useState<string | null>(null);
   // Local status override for forcing 'Ready' after save/discard
   const [statusOverride, setStatusOverride] = useState<string | null>(null);
 
@@ -168,7 +168,7 @@ const App: React.FC = () => {
     try {
       const session = await createSession({
         persona: getPersonaName(),
-        metadata: { systemInstruction },
+        metadata: { systemInstruction, persona: getPersonaName() },
       });
       sessionIdRef.current = session.id;
       // Get combined and video-only streams based on video enabled state
@@ -265,38 +265,37 @@ const App: React.FC = () => {
       setTimeout(() => setStatusOverride(null), 2000);
       return;
     }
-    // Save as before
     setSaveError(null);
     setSavingMode('saving');
     setIsSaving(true);
     try {
       stopRecording();
-      // Stop MediaRecorder and get the video blob
       if (mediaRecorderRef.current) {
         const recorder = mediaRecorderRef.current;
         await new Promise<void>((resolve) => {
           recorder.onstop = () => {
             const blob = new Blob(recordedChunksRef.current, { type: recorder.mimeType });
             videoBlobRef.current = blob;
-            // Log recorded chunks
-            console.log('Recorded video chunks:', recordedChunksRef.current.length, 'Blob size:', blob.size);
             resolve();
           };
           recorder.stop();
         });
       }
-      // Upload video if available
       const sessionId = sessionIdRef.current ?? '';
       if (sessionId && videoBlobRef.current instanceof Blob) {
         if (videoBlobRef.current.size === 0) {
-          setSaveError('No video was recorded or the video file is empty.');
+          setSaveError('No media was recorded or the file is empty.');
         } else {
           try {
-            const { path } = await uploadSessionVideo(sessionId, videoBlobRef.current);
-            // Update session with video_url as the file path
-            await supabase.from('sessions').update({ video_url: path, ended_at: new Date().toISOString() }).eq('id', sessionId);
+            if (localIsVideoEnabled) {
+              const { path } = await uploadSessionVideo(sessionId, videoBlobRef.current);
+              await supabase.from('sessions').update({ video_url: path, ended_at: new Date().toISOString() }).eq('id', sessionId);
+            } else {
+              const { path } = await uploadSessionAudio(sessionId, videoBlobRef.current);
+              await supabase.from('sessions').update({ audio_url: path, ended_at: new Date().toISOString() }).eq('id', sessionId);
+            }
           } catch (uploadErr: any) {
-            setSaveError('Failed to upload video: ' + (uploadErr.message || uploadErr.toString()));
+            setSaveError('Failed to upload media: ' + (uploadErr.message || uploadErr.toString()));
           }
         }
       }
@@ -304,7 +303,6 @@ const App: React.FC = () => {
       videoBlobRef.current = null;
       mediaRecorderRef.current = null;
       recordedChunksRef.current = [];
-      // Stop and clean up streams
       if (videoStreamRef.current) {
         videoStreamRef.current.getTracks().forEach(track => track.stop());
         videoStreamRef.current = null;
@@ -314,21 +312,19 @@ const App: React.FC = () => {
         combinedStreamRef.current = null;
       }
       setMediaStream(null);
-      // Show success overlay after save
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 2000);
       setStatusOverride('Ready');
       setTimeout(() => setStatusOverride(null), 2000);
-      // Refresh session history and analytics after save
       fetchHistory();
       fetchDashboardData();
     } catch (err: any) {
-      setSaveError('Failed to save video: ' + (err.message || err.toString()));
+      setSaveError('Failed to save media: ' + (err.message || err.toString()));
     } finally {
       setIsSaving(false);
       setSavingMode('none');
     }
-  }, [stopRecording, uploadSessionVideo, supabase]);
+  }, [stopRecording, uploadSessionVideo, uploadSessionAudio, supabase, localIsVideoEnabled]);
 
   /** Handles the reset session action. */
   const handleResetSession = useCallback(() => {
@@ -379,6 +375,7 @@ const App: React.FC = () => {
   const [selectedTranscripts, setSelectedTranscripts] = useState<SupabaseTranscript[]>([]);
   const [showPlayback, setShowPlayback] = useState(false);
   const [playbackVideoUrl, setPlaybackVideoUrl] = useState<string | null>(null);
+  const [playbackAudioUrl, setPlaybackAudioUrl] = useState<string | null>(null);
 
   // Set up axios-retry for all axios requests
   axiosRetry(axios, { retries: 3, retryDelay: axiosRetry.exponentialDelay });
@@ -427,6 +424,7 @@ const App: React.FC = () => {
 
   // Ref for the scrollable container in the session history drawer
   const historyScrollRef = useRef<HTMLDivElement>(null);
+  const scrollThrottleRef = useRef<number>(0);
 
   // Auto-fetch on scroll for session history
   useEffect(() => {
@@ -437,7 +435,11 @@ const App: React.FC = () => {
     if (!container) {
       return;
     }
+    const THROTTLE_MS = 200;
     const handleScroll = () => {
+      const now = Date.now();
+      if (now - scrollThrottleRef.current < THROTTLE_MS) return;
+      scrollThrottleRef.current = now;
       if (
         container.scrollHeight - container.scrollTop - container.clientHeight < 120 &&
         hasMoreSessions &&
@@ -459,6 +461,22 @@ const App: React.FC = () => {
   const handleSessionClick = async (session: SupabaseSession) => {
     setSelectedSession(session);
     setPlaybackVideoUrl(session.video_url || null);
+    if (session.audio_url) {
+      try {
+        const { data, error } = await supabase.storage
+          .from('session_audio')
+          .createSignedUrl(session.audio_url, 60 * 60);
+        if (!error && data?.signedUrl) {
+          setPlaybackAudioUrl(data.signedUrl);
+        } else {
+          setPlaybackAudioUrl(null);
+        }
+      } catch {
+        setPlaybackAudioUrl(null);
+      }
+    } else {
+      setPlaybackAudioUrl(null);
+    }
     setShowPlayback(true);
     setAnalysisLoading(true);
     // Fetch transcripts for the session
@@ -475,25 +493,30 @@ const App: React.FC = () => {
       transcripts = [];
     }
     setSelectedTranscripts(transcripts);
-    // 1. Check in-memory cache
     if (sessionAnalysisMap[session.id]) {
       setAnalysisLoading(false);
       return;
     }
-    // 2. Check Supabase metadata.analysis
     const analysisFromDb = session.metadata?.analysis;
     if (analysisFromDb) {
       setSessionAnalysisMap(prev => ({ ...prev, [session.id]: analysisFromDb }));
       setAnalysisLoading(false);
       return;
     }
-    // 3. Only call Gemini if missing
     try {
       const videoUrl = session.video_url || undefined;
+      const audioUrl = session.audio_url || undefined;
+      const persona = session.persona;
+      const systemInstruction = session.metadata?.systemInstruction;
       const analysis = await analyzeSessionWithGemini({
         videoUrl,
+        audioUrl,
         transcripts,
         sessionId: session.id,
+        persona,
+        systemInstruction,
+        started_at: session.started_at,
+        ended_at: session.ended_at,
       });
       setSessionAnalysisMap(prev => ({ ...prev, [session.id]: analysis }));
     } catch (e) {
@@ -509,10 +532,18 @@ const App: React.FC = () => {
     setAnalysisLoading(true);
     try {
       const videoUrl = selectedSession.video_url || undefined;
+      const audioUrl = selectedSession.audio_url || undefined;
+      const persona = selectedSession.persona;
+      const systemInstruction = selectedSession.metadata?.systemInstruction;
       const analysis = await analyzeSessionWithGemini({
         videoUrl,
+        audioUrl,
         transcripts: selectedTranscripts,
         sessionId: selectedSession.id,
+        persona,
+        systemInstruction,
+        started_at: selectedSession.started_at,
+        ended_at: selectedSession.ended_at,
       });
       setSessionAnalysisMap(prev => ({ ...prev, [selectedSession.id]: analysis }));
     } catch (e) {
@@ -558,28 +589,45 @@ const App: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sessions]);
 
-  // Update handleDeleteSession to use confirmation modal
+  // Update handleDeleteSession to delete immediately
+  const [toast, setToast] = useState<{ message: string, actionLabel?: string, onAction?: () => void, type?: 'success' | 'error' | 'info' } | null>(null);
+  const [recentlyDeleted, setRecentlyDeleted] = useState<{ session: SupabaseSession, index: number } | null>(null);
+
   const handleDeleteSession = async (sessionId: string) => {
-    setPendingDeleteSessionId(sessionId);
-  };
-  // Confirm delete handler
-  const confirmDeleteSession = async () => {
-    if (!pendingDeleteSessionId) {
-      return;
-    }
-    const session = sessions.find(s => s.id === pendingDeleteSessionId);
-    if (!session) {
-      return;
-    }
+    const session = sessions.find(s => s.id === sessionId);
+    if (!session) return;
+    const index = sessions.findIndex(s => s.id === sessionId);
     try {
       await deleteSessionAndData(session);
-      setSessions(prev => prev.filter(s => s.id !== pendingDeleteSessionId));
+      setRecentlyDeleted({ session, index });
+      setSessions(prev => prev.filter(s => s.id !== sessionId));
+      setToast({
+        message: 'Session deleted',
+        actionLabel: 'Undo',
+        onAction: () => {
+          setSessions(prev => {
+            const arr = [...prev];
+            arr.splice(index, 0, session);
+            return arr;
+          });
+          setToast({ message: 'Session restored', type: 'success', onAction: undefined });
+          setRecentlyDeleted(null);
+        },
+        type: 'info',
+      });
     } catch (err: any) {
-      alert('Failed to delete session: ' + (err.message || err.toString()));
-    } finally {
-      setPendingDeleteSessionId(null);
+      setToast({ message: 'Failed to delete session: ' + (err.message || err.toString()), type: 'error' });
+      throw err;
     }
   };
+
+  // Auto-dismiss toast after 4s unless undo is available
+  useEffect(() => {
+    if (toast && !toast.actionLabel) {
+      const t = setTimeout(() => setToast(null), 4000);
+      return () => clearTimeout(t);
+    }
+  }, [toast]);
 
   // --- Analytics Dashboard State ---
   const [showDashboard, setShowDashboard] = useState(false);
@@ -670,20 +718,6 @@ const App: React.FC = () => {
           <span className="font-semibold">Error:</span> {errorMessage}
         </div>
       )}
-      {/* Delete Confirmation Modal */}
-      {pendingDeleteSessionId && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center">
-          <div className="bg-[var(--color-background-secondary)] rounded-2xl shadow-2xl p-6 max-w-sm w-full relative">
-            <button onClick={() => setPendingDeleteSessionId(null)} className="absolute top-3 right-3 text-slate-400 hover:text-slate-200 text-xl font-bold">&times;</button>
-            <h3 className="text-lg font-bold mb-4">Delete this session?</h3>
-            <p className="mb-6">Are you sure you want to delete this session? This action cannot be undone.</p>
-            <div className="flex justify-end gap-3">
-              <button onClick={() => setPendingDeleteSessionId(null)} className="px-4 py-2 rounded bg-slate-600 text-white hover:bg-slate-700">Cancel</button>
-              <button onClick={confirmDeleteSession} className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700">Delete</button>
-            </div>
-          </div>
-        </div>
-      )}
       {/* Session History Drawer */}
       <SessionHistoryDrawer
         open={showHistory}
@@ -719,7 +753,7 @@ const App: React.FC = () => {
               aria-label="Show History"
               title="Show History"
             >
-              <HistoryIcon size={22} />
+              <History size={22} />
             </button>
             <button
               className="p-2 rounded-lg hover:bg-[var(--color-background-tertiary)] focus:outline-none focus:ring-2 focus:ring-accent-500/70"
@@ -727,7 +761,7 @@ const App: React.FC = () => {
               aria-label={showDashboard ? 'Hide Analytics' : 'Show Analytics'}
               title={showDashboard ? 'Hide Analytics' : 'Show Analytics'}
             >
-              <AnalyticsIcon size={22} />
+              <BarChart2 size={22} />
             </button>
           </div>
         </div>
@@ -819,11 +853,21 @@ const App: React.FC = () => {
         session={selectedSession}
         transcripts={selectedTranscripts}
         videoUrl={playbackVideoUrl}
+        audioUrl={playbackAudioUrl}
         onClose={() => setShowPlayback(false)}
         sessionAnalysis={selectedSession ? sessionAnalysisMap[selectedSession.id] : undefined}
         analysisLoading={analysisLoading}
         onReanalyze={handleReanalyze}
       />
+      {toast && (
+        <Toast
+          message={toast.message}
+          actionLabel={toast.actionLabel}
+          onAction={toast.onAction}
+          onClose={() => setToast(null)}
+          type={toast.type}
+        />
+      )}
     </div>
   );
 };

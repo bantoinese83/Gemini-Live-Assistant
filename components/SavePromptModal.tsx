@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import LoadingSpinner from './LoadingSpinner';
-import { TrashIcon, CheckIcon } from './icons';
+import { Trash2, Check } from 'lucide-react';
 
 interface SavePromptModalProps {
   open: boolean;
@@ -19,11 +19,58 @@ const SavePromptModal: React.FC<SavePromptModalProps> = ({
   onConfirm,
   onClose,
 }) => {
+  const modalRef = useRef<HTMLDivElement>(null);
+  const lastActiveElement = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    lastActiveElement.current = document.activeElement as HTMLElement;
+    const focusable = modalRef.current?.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+    );
+    const first = focusable?.[0];
+    const last = focusable?.[focusable.length - 1];
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Tab' && focusable && focusable.length > 0) {
+        if (e.shiftKey) {
+          if (document.activeElement === first) {
+            e.preventDefault();
+            last?.focus();
+          }
+        } else {
+          if (document.activeElement === last) {
+            e.preventDefault();
+            first?.focus();
+          }
+        }
+      } else if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    first?.focus();
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      lastActiveElement.current?.focus();
+    };
+  }, [open, onClose]);
+
   if (!open) return null;
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center">
-      <div className="bg-[var(--color-background-secondary)] rounded-2xl shadow-2xl p-6 max-w-sm w-full relative">
-        <button onClick={onClose} className="absolute top-3 right-3 text-slate-400 hover:text-slate-200 text-xl font-bold">&times;</button>
+      <div
+        ref={modalRef}
+        tabIndex={-1}
+        aria-modal="true"
+        role="dialog"
+        aria-label="Save Prompt Modal"
+        className="bg-[var(--color-background-secondary)] rounded-2xl shadow-2xl p-6 max-w-sm w-full relative"
+      >
+        <button
+          onClick={onClose}
+          className="absolute top-3 right-3 text-slate-400 hover:text-slate-200 text-xl font-bold"
+          aria-label="Close"
+        >&times;</button>
         <h3 className="text-lg font-bold mb-4">Save this session?</h3>
         <p className="mb-6">Would you like to save the video and transcript for this session?</p>
         {isSaving ? (
@@ -42,7 +89,7 @@ const SavePromptModal: React.FC<SavePromptModalProps> = ({
               aria-label="Discard session"
               title="Discard session"
             >
-              <TrashIcon size={20} />
+              <Trash2 size={20} />
             </button>
             <button
               onClick={() => onConfirm(true)}
@@ -51,7 +98,7 @@ const SavePromptModal: React.FC<SavePromptModalProps> = ({
               aria-label="Save session"
               title="Save session"
             >
-              <CheckIcon size={20} />
+              <Check size={20} />
             </button>
           </div>
         )}

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { BORDER_RADIUS_LG } from '../theme'; // Using theme constant for border radius
 

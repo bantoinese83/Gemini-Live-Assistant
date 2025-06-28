@@ -14,7 +14,7 @@ export async function createSession(session: Omit<SupabaseSession, 'id' | 'start
 export async function addTranscript(transcript: Omit<SupabaseTranscript, 'id' | 'created_at'>) {
   const { data, error } = await supabase
     .from('transcripts')
-    .upsert([{ ...transcript }], { onConflict: ['session_id', 'speaker'] })
+    .upsert([{ ...transcript }], { onConflict: 'session_id,speaker' })
     .select()
     .single();
   if (error) throw error;
@@ -34,6 +34,21 @@ export async function uploadSessionVideo(sessionId: string, file: File | Blob) {
     throw error;
   }
   // Only return the file path; playback will use signed URLs.
+  return { path: filePath };
+}
+
+export async function uploadSessionAudio(sessionId: string, file: File | Blob) {
+  if (!(file instanceof Blob) || file.size === 0) {
+    throw new Error('No audio recorded or audio file is empty.');
+  }
+  const filePath = `${sessionId}/${Date.now()}.webm`;
+  const { data, error } = await supabase.storage
+    .from('session_audio')
+    .upload(filePath, file, { upsert: true });
+  if (error) {
+    console.error('Supabase audio upload error:', error);
+    throw error;
+  }
   return { path: filePath };
 }
 
@@ -102,6 +117,10 @@ export async function deleteSessionAndData(session: SupabaseSession) {
   // 2. Delete video from storage if exists
   if (session.video_url) {
     await supabase.storage.from('session-videos').remove([session.video_url]);
+  }
+  // 2b. Delete audio from storage if exists
+  if (session.audio_url) {
+    await supabase.storage.from('session_audio').remove([session.audio_url]);
   }
 
   // 3. Delete session

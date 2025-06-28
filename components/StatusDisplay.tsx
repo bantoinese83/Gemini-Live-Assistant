@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { BORDER_RADIUS_MD, TRANSITION_MEDIUM } from '../theme';
+import { CheckCircle, Mic, LoaderCircle, AlertTriangle, RefreshCcw } from 'lucide-react';
 
 export type StatusType = 'idle' | 'recording' | 'processing' | 'error' | 'connecting';
 
@@ -17,11 +18,11 @@ interface StatusDisplayProps {
 }
 
 const statusIcons: Record<StatusType, React.ReactNode> = {
-  idle: <span className="text-green-400 mr-2" aria-label="Ready" title="Ready">✅</span>,
-  recording: <span className="text-red-400 mr-2 animate-pulse" aria-label="Recording" title="Recording">🎤</span>,
-  processing: <span className="text-yellow-300 mr-2 animate-spin-slow" aria-label="Processing" title="Processing">⏳</span>,
-  error: <span className="text-orange-400 mr-2" aria-label="Error" title="Error">⚠️</span>,
-  connecting: <span className="text-blue-400 mr-2 animate-spin-slow" aria-label="Connecting" title="Connecting">🔄</span>,
+  idle: <CheckCircle size={20} className="text-green-400 mr-2" aria-label="Ready" title="Ready" />,
+  recording: <Mic size={20} className="text-red-400 mr-2 animate-pulse" aria-label="Recording" title="Recording" />,
+  processing: <LoaderCircle size={20} className="text-yellow-300 mr-2 animate-spin-slow" aria-label="Processing" title="Processing" />,
+  error: <AlertTriangle size={20} className="text-orange-400 mr-2" aria-label="Error" title="Error" />,
+  connecting: <RefreshCcw size={20} className="text-blue-400 mr-2 animate-spin-slow" aria-label="Connecting" title="Connecting" />,
 };
 
 const getStatusType = (statusMessage: string | null, errorMessage: string | null, isSaving?: boolean): StatusType => {
@@ -65,7 +66,7 @@ const StatusDisplay: React.FC<StatusDisplayProps> = React.memo(({ statusMessage,
       aria-atomic="true"
     >
       {errorMessage && (
-        <div className="text-orange-400 flex items-center">
+        <div className="text-orange-400 flex items-center" role="alert">
           {statusIcons.error}
           <span className="font-semibold">Error:</span> {errorMessage}
         </div>

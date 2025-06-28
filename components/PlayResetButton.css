@@ -1,0 +1,110 @@
+/* Box model */
+* {
+  box-sizing: border-box;
+}
+
+.circle-btn {
+  border-radius: 50%;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: linear-gradient(180deg, #f7f7f7 0%, #e7e7e7 100%);
+  box-shadow: 0px 3px 10px #aaa, inset 0px 2px 4px #fff;
+  border: none;
+  outline: none;
+  transition: box-shadow 0.2s, background 0.2s, transform 0.1s;
+}
+
+.circle-btn:active {
+  transform: scale(0.97);
+}
+
+.player-btn--play {
+  background: linear-gradient(180deg, #4beade 0%, #46ccbf 100%);
+  box-shadow: 0px 3px 16px #38bdf8aa, 0px 1px 4px #fff inset;
+}
+.player-btn--play:hover {
+  background: linear-gradient(180deg, #46ccbf 0%, #4beade 100%);
+  box-shadow: 0px 6px 24px #14b8a6cc, 0px 2px 8px #fff inset;
+}
+
+.player-btn--stop {
+  background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+  box-shadow: 0px 3px 16px #ef4444aa, 0px 1px 4px #fff inset;
+}
+.player-btn--stop:hover {
+  background: linear-gradient(180deg, #dc2626 0%, #ef4444 100%);
+  box-shadow: 0px 6px 24px #ef4444cc, 0px 2px 8px #fff inset;
+}
+
+.player-btn--reset {
+  background: linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%);
+  box-shadow: 0px 3px 16px #fbbf24aa, 0px 1px 4px #fff inset;
+}
+.player-btn--reset:hover {
+  background: linear-gradient(180deg, #f59e0b 0%, #fbbf24 100%);
+  box-shadow: 0px 6px 24px #fbbf24cc, 0px 2px 8px #fff inset;
+}
+
+.triangle-svg {
+  width: 48px;
+  height: 48px;
+  display: block;
+}
+.triangle-shape {
+  filter: drop-shadow(0 2px 6px #38bdf8cc);
+  transition: fill 0.2s;
+}
+.player-btn--play:hover .triangle-shape {
+  fill: #46ccbf;
+}
+
+.stop-svg {
+  width: 32px;
+  height: 32px;
+  display: block;
+}
+
+/* Buffering ring animation */
+.buffering-ring {
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  border: 6px solid #4beade44;
+  border-top: 6px solid #fff;
+  border-right: 6px solid #fff;
+  border-bottom: 6px solid #4beadecc;
+  border-left: 6px solid #4beadecc;
+  animation: rotate 1.5s linear infinite;
+  pointer-events: none;
+}
+@keyframes rotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.reset-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+}
+.reset-icon {
+  color: #fff;
+  filter: drop-shadow(0 2px 6px #fbbf24cc);
+  transition: color 0.2s;
+}
+.player-btn--reset:hover .reset-icon {
+  color: #f59e0b;
+}
+
+.strong-glow {
+  filter: drop-shadow(0 0 8px #fff) drop-shadow(0 0 16px #fff8);
+} 

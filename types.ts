@@ -179,6 +179,7 @@ export interface SupabaseSession {
   started_at: string;
   ended_at?: string | null;
   video_url?: string | null;
+  audio_url?: string | null;
   metadata?: Record<string, any>;
 }
 
@@ -199,6 +200,7 @@ export const SupabaseSessionSchema = z.object({
   started_at: z.string(),
   ended_at: z.string().nullable().optional(),
   video_url: z.string().nullable().optional(),
+  audio_url: z.string().nullable().optional(),
   metadata: z.record(z.any()).optional(),
 });
 
