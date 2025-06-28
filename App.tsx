@@ -22,7 +22,7 @@ import {
 } from './services/sessionStorageService';
 import { supabase } from './services/supabaseClient';
 import type { SupabaseSession, SupabaseTranscript } from './types';
-import { HistoryIcon } from './components/icons';
+import { HistoryIcon, AnalyticsIcon } from './components/icons';
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
 import { SupabaseSessionArraySchema, SupabaseTranscriptArraySchema } from './types';
@@ -30,6 +30,9 @@ import SessionHistoryDrawer from './components/SessionHistoryDrawer';
 import SavePromptModal from './components/SavePromptModal';
 import SessionPlaybackModal from './components/SessionPlaybackModal';
 import SuccessOverlay from './components/SuccessOverlay';
+import { analyzeSessionWithGemini } from './services/geminiLiveService';
+import type { SessionAnalysisResult } from './types';
+import AnalyticsDrawer from './components/AnalyticsDrawer';
 
 /**
  * The main application component.
@@ -316,6 +319,9 @@ const App: React.FC = () => {
       setTimeout(() => setShowSuccess(false), 2000);
       setStatusOverride('Ready');
       setTimeout(() => setStatusOverride(null), 2000);
+      // Refresh session history and analytics after save
+      fetchHistory();
+      fetchDashboardData();
     } catch (err: any) {
       setSaveError('Failed to save video: ' + (err.message || err.toString()));
     } finally {
@@ -445,44 +451,74 @@ const App: React.FC = () => {
     return () => container.removeEventListener('scroll', handleScroll);
   }, [showHistory, hasMoreSessions, isFetchingMore, historyLoading]);
 
-  // Handle session click for playback, with cache, validation, and retry
+  // --- Session Analysis State ---
+  const [sessionAnalysisMap, setSessionAnalysisMap] = useState<{ [sessionId: string]: SessionAnalysisResult }>({});
+  const [analysisLoading, setAnalysisLoading] = useState(false);
+
+  // Handler for when a session is selected from history
   const handleSessionClick = async (session: SupabaseSession) => {
     setSelectedSession(session);
+    setPlaybackVideoUrl(session.video_url || null);
     setShowPlayback(true);
-    setPlaybackVideoUrl(null);
-    // Try cache first
+    setAnalysisLoading(true);
+    // Fetch transcripts for the session
     let transcripts: SupabaseTranscript[] = [];
-    const cached = getCachedTranscripts(session.id);
-    if (cached) {
-      try {
-        transcripts = SupabaseTranscriptArraySchema.parse(cached);
-        setSelectedTranscripts(transcripts);
-      } catch {}
-    }
     try {
-      // Always fetch latest from Supabase for accuracy
-      const result = await supabase.from('transcripts').select('*').eq('session_id', session.id).order('timestamp_ms', { ascending: true });
-      if (result.error) {
-        throw result.error;
-      }
-      transcripts = SupabaseTranscriptArraySchema.parse(result.data || []);
-      setSelectedTranscripts(transcripts);
-      cacheTranscripts(session.id, transcripts);
-      if (session.video_url) {
-        const { data, error } = await supabase.storage
-          .from('session-videos')
-          .createSignedUrl(session.video_url, 60 * 60);
-        if (error) {
-          setPlaybackVideoUrl(null);
-        } else {
-          setPlaybackVideoUrl(data?.signedUrl || null);
-        }
-      } else {
-        setPlaybackVideoUrl(null);
-      }
-    } catch (err: any) {
-      setSelectedTranscripts(transcripts); // fallback to cache if available
-      setPlaybackVideoUrl(null);
+      const { data, error } = await supabase
+        .from('transcripts')
+        .select('*')
+        .eq('session_id', session.id)
+        .order('timestamp_ms', { ascending: true });
+      if (error) throw error;
+      transcripts = SupabaseTranscriptArraySchema.parse(data || []);
+    } catch {
+      transcripts = [];
+    }
+    setSelectedTranscripts(transcripts);
+    // 1. Check in-memory cache
+    if (sessionAnalysisMap[session.id]) {
+      setAnalysisLoading(false);
+      return;
+    }
+    // 2. Check Supabase metadata.analysis
+    const analysisFromDb = session.metadata?.analysis;
+    if (analysisFromDb) {
+      setSessionAnalysisMap(prev => ({ ...prev, [session.id]: analysisFromDb }));
+      setAnalysisLoading(false);
+      return;
+    }
+    // 3. Only call Gemini if missing
+    try {
+      const videoUrl = session.video_url || undefined;
+      const analysis = await analyzeSessionWithGemini({
+        videoUrl,
+        transcripts,
+        sessionId: session.id,
+      });
+      setSessionAnalysisMap(prev => ({ ...prev, [session.id]: analysis }));
+    } catch (e) {
+      // Optionally handle error
+    } finally {
+      setAnalysisLoading(false);
+    }
+  };
+
+  // Handler to force re-analysis of a session
+  const handleReanalyze = async () => {
+    if (!selectedSession) return;
+    setAnalysisLoading(true);
+    try {
+      const videoUrl = selectedSession.video_url || undefined;
+      const analysis = await analyzeSessionWithGemini({
+        videoUrl,
+        transcripts: selectedTranscripts,
+        sessionId: selectedSession.id,
+      });
+      setSessionAnalysisMap(prev => ({ ...prev, [selectedSession.id]: analysis }));
+    } catch (e) {
+      // Optionally show error to user
+    } finally {
+      setAnalysisLoading(false);
     }
   };
 
@@ -545,6 +581,81 @@ const App: React.FC = () => {
     }
   };
 
+  // --- Analytics Dashboard State ---
+  const [showDashboard, setShowDashboard] = useState(false);
+  const [dashboardLoading, setDashboardLoading] = useState(false);
+  const [dashboardSessions, setDashboardSessions] = useState<any[]>([]);
+  const [dashboardError, setDashboardError] = useState<string | null>(null);
+
+  // Fetch all sessions with analysis from Supabase
+  const fetchDashboardData = async () => {
+    setDashboardLoading(true);
+    setDashboardError(null);
+    try {
+      const { data, error } = await supabase
+        .from('sessions')
+        .select('id, persona, started_at, ended_at, metadata')
+        .not('metadata', 'is', null);
+      if (error) throw error;
+      setDashboardSessions(data || []);
+    } catch (err: any) {
+      setDashboardError('Failed to load analytics: ' + (err.message || err.toString()));
+    } finally {
+      setDashboardLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showDashboard) {
+      fetchDashboardData();
+    }
+  }, [showDashboard]);
+
+  // Aggregate analytics
+  const analytics = useMemo(() => {
+    if (!dashboardSessions.length) return null;
+    let totalSessions = dashboardSessions.length;
+    let totalDuration = 0;
+    let sentimentCounts: Record<string, number> = {};
+    let allInsights: string[] = [];
+    dashboardSessions.forEach(s => {
+      const analysis = s.metadata?.analysis;
+      if (analysis) {
+        totalDuration += analysis.keyMetrics?.duration || 0;
+        const sentiment = analysis.keyMetrics?.sentiment || 'unknown';
+        sentimentCounts[sentiment] = (sentimentCounts[sentiment] || 0) + 1;
+        if (Array.isArray(analysis.insights)) {
+          allInsights.push(...analysis.insights);
+        }
+      }
+    });
+    const avgDuration = totalSessions ? (totalDuration / totalSessions) : 0;
+    const mostCommonSentiment = Object.entries(sentimentCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || 'unknown';
+    const insightCounts: Record<string, number> = {};
+    allInsights.forEach(i => { insightCounts[i] = (insightCounts[i] || 0) + 1; });
+    const topInsights = Object.entries(insightCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    return {
+      totalSessions,
+      avgDuration,
+      mostCommonSentiment,
+      topInsights,
+    };
+  }, [dashboardSessions]);
+
+  // Ensure session history is refreshed when drawer is opened or after save
+  useEffect(() => {
+    if (showHistory) {
+      fetchHistory();
+    }
+  }, [showHistory]);
+
+  // Ensure analytics dashboard is refreshed when opened or after save
+  useEffect(() => {
+    if (showDashboard) {
+      fetchDashboardData();
+    }
+  }, [showDashboard]);
+
   if (!isInitialized && !apiKeyMissing) {
     return loadingScreen;
   }
@@ -588,27 +699,37 @@ const App: React.FC = () => {
         isFetchingMore={isFetchingMore}
         scrollContainerRef={historyScrollRef}
       />
+      <AnalyticsDrawer
+        open={showDashboard}
+        loading={dashboardLoading}
+        error={dashboardError}
+        analytics={analytics}
+        onClose={() => setShowDashboard(false)}
+      />
       {/* Sidebar / Control Area */}
       <aside className={`w-full lg:w-80 xl:w-96 bg-[var(--color-background-secondary)] p-3 sm:p-4 shadow-lg flex-shrink-0 lg:h-full lg:overflow-y-auto space-y-4 ${TRANSITION_MEDIUM} border-r border-[var(--color-border-primary)]`}>
         <div className="flex justify-between items-center mb-2">
           <h1 className="text-2xl sm:text-3xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-[var(--color-accent-teal)] to-[var(--color-accent-sky)] pt-1 pb-2 mb-1 sm:mb-2">
             Gemini Live
           </h1>
-          <button
-            onClick={() => {
-              if (showHistory) {
-                setShowHistory(false);
-              } else {
-                setShowHistory(true);
-                fetchHistory();
-              }
-            }}
-            className={`p-2 rounded-full ${showHistory ? 'bg-[var(--color-accent-sky-hover)]' : 'bg-[var(--color-accent-sky)]'} text-white hover:bg-[var(--color-accent-sky-hover)] focus:outline-none focus:ring-2 focus:ring-accent-500/70 shadow-md`}
-            aria-label={showHistory ? 'Close session history' : 'Show session history'}
-            aria-pressed={showHistory}
-          >
-            <HistoryIcon size={22} />
-          </button>
+          <div className="flex items-center gap-2 mb-4">
+            <button
+              className="p-2 rounded-lg hover:bg-[var(--color-background-tertiary)] focus:outline-none focus:ring-2 focus:ring-accent-500/70"
+              onClick={() => setShowHistory(true)}
+              aria-label="Show History"
+              title="Show History"
+            >
+              <HistoryIcon size={22} />
+            </button>
+            <button
+              className="p-2 rounded-lg hover:bg-[var(--color-background-tertiary)] focus:outline-none focus:ring-2 focus:ring-accent-500/70"
+              onClick={() => setShowDashboard(d => !d)}
+              aria-label={showDashboard ? 'Hide Analytics' : 'Show Analytics'}
+              title={showDashboard ? 'Hide Analytics' : 'Show Analytics'}
+            >
+              <AnalyticsIcon size={22} />
+            </button>
+          </div>
         </div>
         
         <ApiKeyIndicator apiKeyMissing={apiKeyMissing} />
@@ -699,6 +820,9 @@ const App: React.FC = () => {
         transcripts={selectedTranscripts}
         videoUrl={playbackVideoUrl}
         onClose={() => setShowPlayback(false)}
+        sessionAnalysis={selectedSession ? sessionAnalysisMap[selectedSession.id] : undefined}
+        analysisLoading={analysisLoading}
+        onReanalyze={handleReanalyze}
       />
     </div>
   );

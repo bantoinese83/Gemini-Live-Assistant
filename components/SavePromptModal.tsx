@@ -1,5 +1,6 @@
 import React from 'react';
 import LoadingSpinner from './LoadingSpinner';
+import { TrashIcon, CheckIcon } from './icons';
 
 interface SavePromptModalProps {
   open: boolean;
@@ -34,8 +35,24 @@ const SavePromptModal: React.FC<SavePromptModalProps> = ({
           </div>
         ) : (
           <div className="flex justify-end gap-3">
-            <button onClick={() => onConfirm(false)} className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-60" disabled={isSaving}>Discard</button>
-            <button onClick={() => onConfirm(true)} className="px-4 py-2 rounded bg-green-600 text-white hover:bg-green-700 disabled:opacity-60" disabled={isSaving}>Save</button>
+            <button
+              onClick={() => onConfirm(false)}
+              className="p-2 rounded-lg bg-red-600 text-white hover:bg-red-700 disabled:opacity-60"
+              disabled={isSaving}
+              aria-label="Discard session"
+              title="Discard session"
+            >
+              <TrashIcon size={20} />
+            </button>
+            <button
+              onClick={() => onConfirm(true)}
+              className="p-2 rounded-lg bg-green-600 text-white hover:bg-green-700 disabled:opacity-60"
+              disabled={isSaving}
+              aria-label="Save session"
+              title="Save session"
+            >
+              <CheckIcon size={20} />
+            </button>
           </div>
         )}
         {saveError && <div className="mt-4 text-red-500 text-sm text-center">{saveError}</div>}

@@ -1,6 +1,7 @@
 import React from 'react';
 import HoverVideoPlayer from 'react-hover-video-player';
 import type { SupabaseSession } from '../types';
+import { TrashIcon } from './icons';
 
 interface SessionHistoryDrawerProps {
   open: boolean;
@@ -98,10 +99,12 @@ const SessionHistoryDrawer: React.FC<SessionHistoryDrawerProps> = ({
                     <span className="text-xs text-[var(--color-text-muted)] truncate">Started: {new Date(session.started_at).toLocaleDateString()}</span>
                   </div>
                   <button
-                    className="px-3 py-1 rounded-lg bg-red-500 text-white text-xs font-semibold shadow hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-400/50 ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="p-2 rounded-lg bg-red-500 text-white text-xs font-semibold shadow hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-400/50 ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={e => { e.stopPropagation(); onDeleteSession(session.id); }}
+                    aria-label="Delete session"
+                    title="Delete session"
                   >
-                    Delete
+                    <TrashIcon size={18} />
                   </button>
                 </div>
               </li>

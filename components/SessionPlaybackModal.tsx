@@ -1,5 +1,8 @@
 import React, { useRef, useState, useEffect } from "react";
 import type { SupabaseSession, SupabaseTranscript } from "../types";
+import LoadingSpinner from './LoadingSpinner';
+import type { SessionAnalysisResult } from '../types';
+import { RefreshIcon } from './icons';
 
 interface SessionPlaybackModalProps {
   open: boolean;
@@ -7,6 +10,9 @@ interface SessionPlaybackModalProps {
   transcripts: SupabaseTranscript[];
   videoUrl: string | null;
   onClose: () => void;
+  sessionAnalysis?: SessionAnalysisResult | null;
+  analysisLoading?: boolean;
+  onReanalyze?: () => void;
 }
 
 const isWebmAudioOnly = async (url: string): Promise<boolean> => {
@@ -135,6 +141,9 @@ const SessionPlaybackModal: React.FC<SessionPlaybackModalProps> = ({
   transcripts,
   videoUrl,
   onClose,
+  sessionAnalysis,
+  analysisLoading = false,
+  onReanalyze,
 }) => {
   const [audioOnly, setAudioOnly] = useState(false);
   useEffect(() => {
@@ -158,7 +167,7 @@ const SessionPlaybackModal: React.FC<SessionPlaybackModalProps> = ({
   }
   return (
     <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center">
-      <div className="bg-[var(--color-background-secondary)] rounded-2xl shadow-2xl p-6 max-w-2xl w-full relative flex flex-col gap-4">
+      <div className="bg-[var(--color-background-secondary)] rounded-2xl shadow-2xl max-w-2xl w-full relative flex flex-col gap-4 max-h-[90vh] overflow-y-auto p-4 md:p-6">
         <button
           onClick={onClose}
           className="absolute top-3 right-3 text-slate-400 hover:text-slate-200 text-xl font-bold"
@@ -207,6 +216,89 @@ const SessionPlaybackModal: React.FC<SessionPlaybackModalProps> = ({
               </div>
             )}
           </div>
+        </div>
+        <div className="mt-2 bg-slate-800 rounded-xl p-4 shadow-inner">
+          <div className="flex items-center justify-between mb-2">
+            <h4 className="font-semibold text-accent-400 text-base flex items-center gap-2">
+              <span role="img" aria-label="Insights">💡</span> Session Analysis & Insights
+            </h4>
+            {onReanalyze && (
+              <button
+                className="ml-2 p-2 rounded-lg hover:bg-[var(--color-background-tertiary)] focus:outline-none focus:ring-2 focus:ring-accent-500/70"
+                onClick={onReanalyze}
+                disabled={analysisLoading}
+                aria-label="Re-analyze session with Gemini"
+                title="Re-analyze session with Gemini"
+              >
+                {analysisLoading ? (
+                  <LoadingSpinner size={18} />
+                ) : (
+                  <RefreshIcon size={20} />
+                )}
+              </button>
+            )}
+          </div>
+          {analysisLoading ? (
+            <div className="flex items-center gap-2 text-slate-300"><LoadingSpinner /> Analyzing session...</div>
+          ) : sessionAnalysis ? (
+            <div className="space-y-3">
+              <div>
+                <span className="font-semibold text-slate-200">Summary:</span>
+                <div className="text-slate-100 mt-1 text-sm">{sessionAnalysis.summary}</div>
+              </div>
+              <div>
+                <span className="font-semibold text-slate-200">Key Metrics:</span>
+                <ul className="text-slate-100 mt-1 text-sm ml-4 list-disc">
+                  <li>Duration: {sessionAnalysis.keyMetrics.duration}s</li>
+                  <li>User Turns: {sessionAnalysis.keyMetrics.userTurns}</li>
+                  <li>AI Turns: {sessionAnalysis.keyMetrics.aiTurns}</li>
+                  {sessionAnalysis.keyMetrics.sentiment && <li>Sentiment: {sessionAnalysis.keyMetrics.sentiment}</li>}
+                </ul>
+              </div>
+              {sessionAnalysis.insights && sessionAnalysis.insights.length > 0 && (
+                <div>
+                  <span className="font-semibold text-slate-200">Insights:</span>
+                  <ul className="text-slate-100 mt-1 text-sm ml-4 list-disc">
+                    {sessionAnalysis.insights.map((insight, idx) => (
+                      <li key={idx}>{insight}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {sessionAnalysis.quiz && sessionAnalysis.quiz.length > 0 && (
+                <div>
+                  <span className="font-semibold text-slate-200">Quiz:</span>
+                  <ul className="text-slate-100 mt-1 text-sm ml-4 list-decimal">
+                    {sessionAnalysis.quiz.map((q, idx) => (
+                      <li key={idx}><span className="font-semibold">Q:</span> {q.question} <br /><span className="font-semibold">A:</span> {q.answer}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {(sessionAnalysis.visualHighlights && sessionAnalysis.visualHighlights.length > 0) && (
+                <div>
+                  <span className="font-semibold text-slate-200">Visual Highlights:</span>
+                  <ul className="text-slate-100 mt-1 text-sm ml-4 list-disc">
+                    {sessionAnalysis.visualHighlights.map((h, idx) => (
+                      <li key={idx}>{h}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {(sessionAnalysis.audioHighlights && sessionAnalysis.audioHighlights.length > 0) && (
+                <div>
+                  <span className="font-semibold text-slate-200">Audio Highlights:</span>
+                  <ul className="text-slate-100 mt-1 text-sm ml-4 list-disc">
+                    {sessionAnalysis.audioHighlights.map((h, idx) => (
+                      <li key={idx}>{h}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-slate-400 text-xs">No analysis available for this session.</div>
+          )}
         </div>
         <div className="flex justify-end mt-2">
           <button
