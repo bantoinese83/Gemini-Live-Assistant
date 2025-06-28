@@ -35,6 +35,8 @@ import { analyzeSessionWithGemini } from './services/geminiLiveService';
 import type { SessionAnalysisResult } from './types';
 import AnalyticsDrawer from './components/AnalyticsDrawer';
 import Toast from './components/common/ErrorBoundary';
+import Header from './components/Header';
+import Footer from './components/Footer';
 
 /**
  * The main application component.
@@ -727,165 +729,151 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row h-screen bg-[var(--color-background-primary)] text-[var(--color-text-primary)] overflow-hidden fade-in">
-      {/* Success Overlay */}
-      <SuccessOverlay visible={showSuccess} />
-      {/* Error Banner */}
-      {errorMessage && (
-        <div className="fixed top-0 left-0 w-full z-50 bg-red-600 text-white text-center py-2 shadow-lg animate-pulse">
-          <span className="font-semibold">Error:</span> {errorMessage}
-        </div>
-      )}
-      {/* Session History Drawer */}
-      <SessionHistoryDrawer
-        open={showHistory}
-        sessions={sessions}
-        loading={historyLoading}
-        error={historyError}
-        videoThumbnails={videoThumbnails}
-        thumbnailLoading={thumbnailLoading}
-        onSessionClick={handleSessionClick}
-        onDeleteSession={handleDeleteSession}
-        onClose={() => setShowHistory(false)}
-        hasMoreSessions={hasMoreSessions}
-        isFetchingMore={isFetchingMore}
-        scrollContainerRef={historyScrollRef}
+    <div className="flex flex-col min-h-screen bg-[var(--color-background-primary)] text-[var(--color-text-primary)] overflow-hidden fade-in">
+      <Header 
+        onShowHistory={() => setShowHistory(true)}
+        onToggleDashboard={() => setShowDashboard(d => !d)}
+        showDashboard={showDashboard}
       />
-      <AnalyticsDrawer
-        open={showDashboard}
-        loading={dashboardLoading}
-        error={dashboardError}
-        analytics={analytics}
-        onClose={() => setShowDashboard(false)}
-      />
-      {/* Sidebar / Control Area */}
-      <aside className={`w-full lg:w-80 xl:w-96 bg-[var(--color-background-secondary)] p-3 sm:p-4 shadow-lg flex-shrink-0 lg:h-full lg:overflow-y-auto space-y-4 ${TRANSITION_MEDIUM} border-r border-[var(--color-border-primary)]`}>
-        <div className="flex justify-between items-center mb-2">
-          <h1 className="text-2xl sm:text-3xl font-bold text-center text-transparent bg-clip-text bg-gradient-to-r from-[var(--color-accent-teal)] to-[var(--color-accent-sky)] pt-1 pb-2 mb-1 sm:mb-2">
-            Gemini Live
-          </h1>
-          <div className="flex items-center gap-2 mb-4">
-            <button
-              className="p-2 rounded-lg hover:bg-[var(--color-background-tertiary)] focus:outline-none focus:ring-2 focus:ring-accent-500/70"
-              onClick={() => setShowHistory(true)}
-              aria-label="Show History"
-              title="Show History"
-            >
-              <History size={22} />
-            </button>
-            <button
-              className="p-2 rounded-lg hover:bg-[var(--color-background-tertiary)] focus:outline-none focus:ring-2 focus:ring-accent-500/70"
-              onClick={() => setShowDashboard(d => !d)}
-              aria-label={showDashboard ? 'Hide Analytics' : 'Show Analytics'}
-              title={showDashboard ? 'Hide Analytics' : 'Show Analytics'}
-            >
-              <BarChart2 size={22} />
-            </button>
-          </div>
-        </div>
-        
-        <ApiKeyIndicator apiKeyMissing={apiKeyMissing} />
-
-        {!apiKeyMissing && (
-          <>
-            <SystemInstructionInput
-              currentInstruction={systemInstruction}
-              onInstructionSet={handleSystemInstructionSet}
-              disabled={isRecording}
-            />
-            <ControlPanel
-              isRecording={isRecording}
-              isInitialized={isInitialized}
-              apiKeyMissing={apiKeyMissing}
-              isVideoEnabled={localIsVideoEnabled}
-              onStartRecording={handleStartRecording}
-              onStopRecording={handleStopRecording}
-              onResetSession={handleResetSession}
-              onToggleVideo={handleToggleVideo}
-              selectedPersonaId={selectedPersonaId}
-              onPersonaChange={handlePersonaChange}
-            />
-            <div className="space-y-3 pt-2 border-t border-[var(--color-border-primary)] mt-3">
-              <VolumeControl label="Input (Mic)" gainNode={inputGainNode} initialVolume={1.0} audioContext={inputAudioContext} />
-              <VolumeControl label="Output (AI Voice)" gainNode={outputGainNode} initialVolume={0.7} audioContext={outputAudioContext} />
+      <main className="flex flex-1 min-h-0 overflow-auto">
+        <div className="flex flex-1 flex-col lg:flex-row w-full">
+          {/* Success Overlay */}
+          <SuccessOverlay visible={showSuccess} />
+          {/* Error Banner */}
+          {errorMessage && (
+            <div className="fixed top-0 left-0 w-full z-50 bg-red-600 text-white text-center py-2 shadow-lg animate-pulse">
+              <span className="font-semibold">Error:</span> {errorMessage}
             </div>
-             <div className="pt-2 mt-auto"> {/* Push StatusDisplay to bottom of sidebar */}
-                <StatusDisplay
-                  statusMessage={statusOverride || ((!isRecording && (!statusMessage || statusMessage.toLowerCase().includes('ready') || statusMessage === 'Initializing...')) ? 'Ready' : statusMessage)}
-                  errorMessage={errorMessage}
-                  isSaving={isSaving}
-                  statusType={
-                    errorMessage ? 'error' :
-                    isSaving ? 'processing' :
-                    isRecording ? 'recording' :
-                    (statusMessage?.toLowerCase().includes('connecting') || statusMessage?.toLowerCase().includes('initializing')) ? 'connecting' :
-                    'idle'
-                  }
-                  onTimeout={() => {
-                    setStatusOverride('Ready');
-                    setIsSaving(false);
-                  }}
-                />
-            </div>
-          </>
-        )}
-      </aside>
-
-      {/* Main Content Area */}
-      <main className={`flex-grow p-3 sm:p-4 lg:p-6 flex flex-col space-y-4 overflow-y-auto lg:overflow-hidden h-full ${TRANSITION_MEDIUM}`}>
-        {/* Video and AI Bot Visualizer Area */}
-        <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 min-h-0 md:h-[40%] md:max-h-[300px] lg:h-[45%] lg:max-h-[350px] xl:max-h-[400px] ${TRANSITION_MEDIUM}`}>
-          <div className={`w-full h-full bg-[var(--color-background-secondary)] ${BORDER_RADIUS_LG} shadow-xl overflow-hidden aspect-video md:aspect-auto`}>
-            <VideoPreview mediaStream={mediaStream} isVideoEnabled={localIsVideoEnabled} />
-          </div>
-          <div className={`w-full h-full bg-[var(--color-background-secondary)] ${BORDER_RADIUS_LG} shadow-xl overflow-hidden aspect-square md:aspect-auto`}>
-            <AIBotVisualizer 
-              audioContext={outputAudioContext} 
-              sourceNode={outputGainNode}
-              isAssistantSpeaking={isAiSpeaking} 
-            />
-          </div>
-        </div>
-        {/* Transcript Display Area */}
-        <div className={`flex-grow min-h-0 md:h-[60%] lg:h-[55%] ${TRANSITION_MEDIUM}`}> 
-          <TranscriptDisplay
-            userTranscript={userTranscript}
-            userTranscriptIsFinal={userTranscriptIsFinal}
-            modelTranscript={modelTranscript}
-            modelTranscriptIsFinal={modelTranscriptIsFinal}
+          )}
+          {/* Session History Drawer */}
+          <SessionHistoryDrawer
+            open={showHistory}
+            sessions={sessions}
+            loading={historyLoading}
+            error={historyError}
+            videoThumbnails={videoThumbnails}
+            thumbnailLoading={thumbnailLoading}
+            onSessionClick={handleSessionClick}
+            onDeleteSession={handleDeleteSession}
+            onClose={() => setShowHistory(false)}
+            hasMoreSessions={hasMoreSessions}
+            isFetchingMore={isFetchingMore}
+            scrollContainerRef={historyScrollRef}
           />
+          <AnalyticsDrawer
+            open={showDashboard}
+            loading={dashboardLoading}
+            error={dashboardError}
+            analytics={analytics}
+            onClose={() => setShowDashboard(false)}
+          />
+          {/* Sidebar / Control Area */}
+          <aside className={`w-full lg:w-80 xl:w-96 bg-[var(--color-background-secondary)] p-3 sm:p-4 shadow-lg flex-shrink-0 lg:h-full lg:overflow-y-auto space-y-4 ${TRANSITION_MEDIUM} border-r border-[var(--color-border-primary)]`}>
+            <ApiKeyIndicator apiKeyMissing={apiKeyMissing} />
+
+            {!apiKeyMissing && (
+              <>
+                <SystemInstructionInput
+                  currentInstruction={systemInstruction}
+                  onInstructionSet={handleSystemInstructionSet}
+                  disabled={isRecording}
+                />
+                <ControlPanel
+                  isRecording={isRecording}
+                  isInitialized={isInitialized}
+                  apiKeyMissing={apiKeyMissing}
+                  isVideoEnabled={localIsVideoEnabled}
+                  onStartRecording={handleStartRecording}
+                  onStopRecording={handleStopRecording}
+                  onResetSession={handleResetSession}
+                  onToggleVideo={handleToggleVideo}
+                  selectedPersonaId={selectedPersonaId}
+                  onPersonaChange={handlePersonaChange}
+                />
+                <div className="space-y-3 pt-2 border-t border-[var(--color-border-primary)] mt-3">
+                  <VolumeControl label="Input (Mic)" gainNode={inputGainNode} initialVolume={1.0} audioContext={inputAudioContext} />
+                  <VolumeControl label="Output (AI Voice)" gainNode={outputGainNode} initialVolume={0.7} audioContext={outputAudioContext} />
+                </div>
+                 <div className="pt-2 mt-auto"> {/* Push StatusDisplay to bottom of sidebar */}
+                    <StatusDisplay
+                      statusMessage={statusOverride || ((!isRecording && (!statusMessage || statusMessage.toLowerCase().includes('ready') || statusMessage === 'Initializing...')) ? 'Ready' : statusMessage)}
+                      errorMessage={errorMessage}
+                      isSaving={isSaving}
+                      statusType={
+                        errorMessage ? 'error' :
+                        isSaving ? 'processing' :
+                        isRecording ? 'recording' :
+                        (statusMessage?.toLowerCase().includes('connecting') || statusMessage?.toLowerCase().includes('initializing')) ? 'connecting' :
+                        'idle'
+                      }
+                      onTimeout={() => {
+                        setStatusOverride('Ready');
+                        setIsSaving(false);
+                      }}
+                    />
+                </div>
+              </>
+            )}
+          </aside>
+
+          {/* Main Content Area */}
+          <section className={`flex-grow p-3 sm:p-4 lg:p-6 flex flex-col space-y-4 overflow-y-auto lg:overflow-hidden h-full pb-4 ${TRANSITION_MEDIUM}`}>
+            {/* Video and AI Bot Visualizer Area */}
+            <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 min-h-0 md:h-[40%] md:max-h-[300px] lg:h-[45%] lg:max-h-[350px] xl:max-h-[400px] ${TRANSITION_MEDIUM}`}>
+              <div className={`w-full h-full bg-[var(--color-background-secondary)] ${BORDER_RADIUS_LG} shadow-xl overflow-hidden aspect-video md:aspect-auto`}>
+                <VideoPreview mediaStream={mediaStream} isVideoEnabled={localIsVideoEnabled} />
+              </div>
+              <div className={`w-full h-full bg-[var(--color-background-secondary)] ${BORDER_RADIUS_LG} shadow-xl overflow-hidden aspect-square md:aspect-auto`}>
+                <AIBotVisualizer 
+                  audioContext={outputAudioContext} 
+                  sourceNode={outputGainNode}
+                  isAssistantSpeaking={isAiSpeaking} 
+                />
+              </div>
+            </div>
+            {/* Transcript Display Area */}
+            <div className={`flex-grow min-h-0 md:h-[60%] lg:h-[55%] ${TRANSITION_MEDIUM}`}> 
+              <TranscriptDisplay
+                userTranscript={userTranscript}
+                userTranscriptIsFinal={userTranscriptIsFinal}
+                modelTranscript={modelTranscript}
+                modelTranscriptIsFinal={modelTranscriptIsFinal}
+              />
+            </div>
+          </section>
+          {/* Save Prompt Modal */}
+          <SavePromptModal
+            open={showSavePrompt}
+            isSaving={isSaving}
+            savingMode={savingMode}
+            saveError={saveError}
+            onConfirm={confirmSaveSession}
+            onClose={() => setShowSavePrompt(false)}
+          />
+          {/* Session Playback Modal */}
+          <SessionPlaybackModal
+            open={showPlayback}
+            session={selectedSession}
+            transcripts={selectedTranscripts}
+            videoUrl={playbackVideoUrl}
+            audioUrl={playbackAudioUrl}
+            onClose={() => setShowPlayback(false)}
+            sessionAnalysis={selectedSession ? sessionAnalysisMap[selectedSession.id] : undefined}
+            analysisLoading={analysisLoading}
+            onReanalyze={handleReanalyze}
+          />
+          {toast && (
+            <Toast
+              message={toast.message}
+              actionLabel={toast.actionLabel}
+              onAction={toast.onAction}
+              onClose={() => setToast(null)}
+              type={toast.type}
+            />
+          )}
         </div>
       </main>
-      {/* Save Prompt Modal */}
-      <SavePromptModal
-        open={showSavePrompt}
-        isSaving={isSaving}
-        savingMode={savingMode}
-        saveError={saveError}
-        onConfirm={confirmSaveSession}
-        onClose={() => setShowSavePrompt(false)}
-      />
-      {/* Session Playback Modal */}
-      <SessionPlaybackModal
-        open={showPlayback}
-        session={selectedSession}
-        transcripts={selectedTranscripts}
-        videoUrl={playbackVideoUrl}
-        audioUrl={playbackAudioUrl}
-        onClose={() => setShowPlayback(false)}
-        sessionAnalysis={selectedSession ? sessionAnalysisMap[selectedSession.id] : undefined}
-        analysisLoading={analysisLoading}
-        onReanalyze={handleReanalyze}
-      />
-      {toast && (
-        <Toast
-          message={toast.message}
-          actionLabel={toast.actionLabel}
-          onAction={toast.onAction}
-          onClose={() => setToast(null)}
-          type={toast.type}
-        />
-      )}
+      <Footer />
     </div>
   );
 };

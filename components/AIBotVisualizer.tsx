@@ -37,11 +37,13 @@ const AIBotVisualizer: React.FC<AIBotVisualizerProps> = React.memo(({
     // The 'ai-bot-container' class provides base styling and positioning for the bot.
     // This class and the bot's internal structure are defined in index.html's CSS.
     <div
-      className="ai-bot-container"
+      className={`ai-bot-container${isAssistantSpeaking ? ' is-speaking' : ''}`}
       role="img"
       aria-label={botStateLabel}
       tabIndex={0}
+      style={{ position: 'relative' }}
     >
+      <div className="ai-bot-morph-border" aria-hidden="true" />
       <AIBot />
     </div>
   );
