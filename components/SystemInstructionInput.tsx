@@ -1,7 +1,8 @@
-
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import Button from './common/Button';
 import { BORDER_RADIUS_MD, TRANSITION_MEDIUM, FOCUS_RING_BASE } from '../theme';
+import { CheckIcon } from './icons';
+import LoadingSpinner from './LoadingSpinner';
 
 /**
  * Props for the SystemInstructionInput component.
@@ -24,55 +25,79 @@ const SystemInstructionInput: React.FC<SystemInstructionInputProps> = React.memo
   onInstructionSet,
   disabled,
 }) => {
-  // Local state for the textarea, initialized with the current global instruction.
   const [instruction, setInstruction] = useState(currentInstruction);
+  const [isApplying, setIsApplying] = useState(false);
+  const [applied, setApplied] = useState(true);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Update local state if the global currentInstruction prop changes externally.
   useEffect(() => {
     setInstruction(currentInstruction);
+    setApplied(true);
+    setIsApplying(false);
   }, [currentInstruction]);
 
-  /** Handles changes to the textarea input. */
+  // Debounced auto-apply
+  useEffect(() => {
+    if (instruction.trim() === currentInstruction.trim()) {
+      setApplied(true);
+      setIsApplying(false);
+      return;
+    }
+    setApplied(false);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (disabled) return;
+    setIsApplying(true);
+    debounceRef.current = setTimeout(() => {
+      onInstructionSet(instruction.trim());
+      setIsApplying(false);
+      setApplied(true);
+    }, 600);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [instruction, disabled]);
+
+  // Apply on blur for immediate feedback
+  const handleBlur = () => {
+    if (instruction.trim() !== currentInstruction.trim() && !disabled) {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      setIsApplying(true);
+      onInstructionSet(instruction.trim());
+      setIsApplying(false);
+      setApplied(true);
+    }
+  };
+
   const handleInstructionChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInstruction(e.target.value);
   }, []);
 
-  /** Handles form submission to apply the new instruction. */
-  const handleSubmit = useCallback((e: React.FormEvent) => {
-    e.preventDefault(); // Prevent default form submission
-    onInstructionSet(instruction.trim()); // Trim whitespace before setting
-  }, [instruction, onInstructionSet]);
-
   return (
-    <form onSubmit={handleSubmit} className="p-1 space-y-3">
+    <form className="p-1 space-y-3" autoComplete="off" onSubmit={e => e.preventDefault()}>
       <label htmlFor="system-instruction" className="block text-sm font-medium text-[var(--color-text-secondary)]">
         AI Persona (System Instruction)
       </label>
-      <textarea
-        id="system-instruction"
-        rows={3}
-        className={`w-full p-2.5 border border-[var(--color-border-primary)] ${BORDER_RADIUS_MD} shadow-sm bg-[var(--color-background-tertiary)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] disabled:opacity-60 ${TRANSITION_MEDIUM} ${FOCUS_RING_BASE} focus:ring-[var(--focus-ring-color)] focus:border-[var(--focus-ring-color)]`}
-        value={instruction}
-        onChange={handleInstructionChange}
-        placeholder="e.g., You are a helpful and witty assistant."
-        disabled={disabled}
-        aria-describedby="system-instruction-help"
-        aria-label="AI Persona System Instruction Input"
-      />
+      <div className="relative">
+        <textarea
+          id="system-instruction"
+          rows={3}
+          className={`w-full p-2.5 border border-[var(--color-border-primary)] rounded-md shadow-sm bg-[var(--color-background-tertiary)] text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] disabled:opacity-60 transition focus:ring-[var(--focus-ring-color)] focus:border-[var(--focus-ring-color)] pr-10`}
+          value={instruction}
+          onChange={handleInstructionChange}
+          onBlur={handleBlur}
+          placeholder="e.g., You are a helpful and witty assistant."
+          disabled={disabled}
+          aria-describedby="system-instruction-help"
+          aria-label="AI Persona System Instruction Input"
+        />
+        <span className="absolute top-2 right-2" aria-live="polite">
+          {isApplying ? <LoadingSpinner size={18} /> : applied ? <CheckIcon size={18} className="text-green-400" title="Instruction applied" aria-label="Instruction applied" /> : null}
+        </span>
+      </div>
       <p id="system-instruction-help" className="text-xs text-[var(--color-text-muted)]">
-        Define how the AI should behave. Changes apply on next session reset or new recording start.
+        Define how the AI should behave. Changes are applied automatically.
       </p>
-      <Button
-        type="submit" // HTML button type for form submission
-        variant="primary"
-        size="md"
-        className="w-full"
-        // Disable if input is disabled, or if the local instruction hasn't changed from the current one.
-        disabled={disabled || instruction.trim() === currentInstruction.trim()}
-        aria-label="Apply System Instruction"
-      >
-        Apply Instruction
-      </Button>
     </form>
   );
 });

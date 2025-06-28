@@ -1,8 +1,8 @@
-
-import { GoogleGenAI, LiveServerMessage, Modality, Session, LiveServerContent } from '@google/genai';
+import { GoogleGenAI, LiveServerMessage, Modality, Session, LiveServerContent, createUserContent, createPartFromUri, Type } from '@google/genai';
 import { createBlob, decode, decodeAudioData } from '../utils/audioUtils';
 import { VIDEO_FRAME_RATE, VIDEO_QUALITY, MAX_RECONNECT_ATTEMPTS, RECONNECT_DELAY_BASE_MS } from '../constants';
-import type { GeminiLiveAICallbacks } from '../types';
+import type { GeminiLiveAICallbacks, SessionAnalysisResult, SupabaseTranscript } from '../types';
+import { supabase } from './supabaseClient';
 
 /**
  * Manages the connection and real-time communication with the Gemini Live API
@@ -675,4 +675,209 @@ export class GeminiLiveAI {
     this.callbacks.onMediaStreamAvailable(null); // Clear media stream in UI
     console.log("GeminiLiveAI instance disposed successfully.");
   }
+}
+
+/**
+ * Analyze a session's video/audio/transcript using Gemini API.
+ * Returns summary, key metrics, insights, and quiz.
+ *
+ * @param opts.videoUrl - Signed URL to the session video (webm/mp4)
+ * @param opts.transcripts - Array of SupabaseTranscript
+ * @param opts.audioUrl - (Optional) Signed URL to audio file if separate
+ * @returns Promise<SessionAnalysisResult>
+ */
+export async function analyzeSessionWithGemini({
+  videoUrl,
+  transcripts,
+  audioUrl,
+  sessionId,
+}: {
+  videoUrl?: string;
+  transcripts: SupabaseTranscript[];
+  audioUrl?: string;
+  sessionId?: string; // For persistence
+}): Promise<SessionAnalysisResult> {
+  // --- 1. Prepare transcript text ---
+  const transcriptText = transcripts
+    .map(t => `${t.speaker === 'user' ? 'User' : 'AI'}: ${t.text}`)
+    .join('\n');
+
+  // --- 1b. Calculate session duration (in seconds) ---
+  let duration = 0;
+  if (transcripts.length > 1) {
+    const first = transcripts[0].timestamp_ms;
+    const last = transcripts[transcripts.length - 1].timestamp_ms;
+    duration = Math.max(0, Math.round((last - first) / 1000));
+  }
+  // If videoUrl is present, try to get video duration
+  if (videoUrl) {
+    try {
+      const video = document.createElement('video');
+      video.src = videoUrl;
+      await new Promise((resolve, reject) => {
+        video.onloadedmetadata = () => {
+          if (!isNaN(video.duration) && video.duration > 0) {
+            duration = Math.round(video.duration);
+          }
+          resolve(true);
+        };
+        video.onerror = () => resolve(false);
+      });
+    } catch {}
+  }
+
+  // --- 2. Prepare Gemini API client with API key ---
+  const apiKey = process.env.API_KEY || (window as any).GEMINI_API_KEY || '';
+  if (!apiKey) {
+    console.error('Gemini API key is missing. Set process.env.API_KEY or window.GEMINI_API_KEY.');
+    throw new Error('Gemini API key is missing. Please set it in your environment.');
+  }
+  const ai = new GoogleGenAI({ apiKey });
+
+  // --- 3. Compose prompt ---
+  let prompt = `Analyze the following session.\n`;
+  if (videoUrl) {
+    prompt += `The session video is provided.\n`;
+  } else if (audioUrl) {
+    prompt += `The session audio is provided.\n`;
+  }
+  prompt += `Here is the transcript (speaker: text):\n${transcriptText}\n`;
+  prompt += `\nSession duration (seconds): ${duration}\n`;
+  prompt += `\nPlease provide:\n- A concise summary of the session\n- Key metrics (duration, number of user/AI turns, sentiment)\n- 3-5 key insights\n- A quiz (2-3 questions with answers)\n- Any visual or audio highlights if possible\nReturn the result as JSON with fields: summary, keyMetrics, insights, quiz, visualHighlights, audioHighlights. The duration in keyMetrics should match the provided session duration.`;
+
+  // --- 4. Prepare Gemini content parts ---
+  let contents: any[] = [];
+  let filePart: any = null;
+  let mimeType = '';
+  let isYouTube = false;
+  if (videoUrl) {
+    if (videoUrl.startsWith('http') && videoUrl.includes('youtube.com')) {
+      // YouTube URL
+      isYouTube = true;
+      filePart = {
+        fileData: {
+          fileUri: videoUrl,
+        },
+      };
+    } else {
+      // Assume direct video file (webm/mp4)
+      mimeType = videoUrl.endsWith('.mp4') ? 'video/mp4' : 'video/webm';
+      // Upload to Gemini File API
+      const videoBlob = await fetch(videoUrl).then(r => r.blob());
+      const myfile = await ai.files.upload({
+        file: new File([videoBlob], 'session-video', { type: mimeType }),
+        config: { mimeType },
+      });
+      filePart = createPartFromUri(myfile.uri, myfile.mimeType);
+    }
+    contents = [filePart, { text: prompt }];
+  } else if (audioUrl) {
+    // Audio file
+    mimeType = audioUrl.endsWith('.mp3') ? 'audio/mp3' : 'audio/mpeg';
+    const audioBlob = await fetch(audioUrl).then(r => r.blob());
+    const myfile = await ai.files.upload({
+      file: new File([audioBlob], 'session-audio', { type: mimeType }),
+      config: { mimeType },
+    });
+    filePart = createPartFromUri(myfile.uri, myfile.mimeType);
+    contents = [filePart, { text: prompt }];
+  } else {
+    // Transcript only
+    contents = [{ text: prompt }];
+  }
+
+  // --- 5. Define response schema for structured output ---
+  const responseSchema = {
+    type: Type.OBJECT,
+    properties: {
+      summary: { type: Type.STRING },
+      keyMetrics: {
+        type: Type.OBJECT,
+        properties: {
+          duration: { type: Type.NUMBER },
+          userTurns: { type: Type.NUMBER },
+          aiTurns: { type: Type.NUMBER },
+          sentiment: { type: Type.STRING },
+        },
+        propertyOrdering: ['duration', 'userTurns', 'aiTurns', 'sentiment'],
+      },
+      insights: { type: Type.ARRAY, items: { type: Type.STRING } },
+      quiz: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            question: { type: Type.STRING },
+            answer: { type: Type.STRING },
+          },
+          propertyOrdering: ['question', 'answer'],
+        },
+      },
+      visualHighlights: { type: Type.ARRAY, items: { type: Type.STRING } },
+      audioHighlights: { type: Type.ARRAY, items: { type: Type.STRING } },
+    },
+    propertyOrdering: [
+      'summary',
+      'keyMetrics',
+      'insights',
+      'quiz',
+      'visualHighlights',
+      'audioHighlights',
+    ],
+  };
+
+  // --- 6. Call Gemini API for structured output ---
+  let result: SessionAnalysisResult | null = null;
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents,
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema,
+      },
+    });
+    // Parse JSON result
+    result = typeof response.text === 'string' ? JSON.parse(response.text) : response.text;
+  } catch (err) {
+    // Fallback: transcript-only analysis
+    console.error('Gemini analysis failed, falling back to transcript-only:', err);
+    if (contents.length > 1) {
+      // Try again with transcript only
+      try {
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: [{ text: prompt }],
+          config: {
+            responseMimeType: 'application/json',
+            responseSchema,
+          },
+        });
+        result = typeof response.text === 'string' ? JSON.parse(response.text) : response.text;
+      } catch (err2) {
+        throw new Error('Gemini analysis failed: ' + err2);
+      }
+    } else {
+      throw new Error('Gemini analysis failed: ' + err);
+    }
+  }
+
+  // --- 7. Persist analysis result in Supabase (sessions.metadata.analysis) ---
+  if (sessionId && result) {
+    try {
+      // Update the session row with analysis in metadata
+      await supabase.from('sessions').update({
+        metadata: {
+          ...(typeof sessionId === 'string' ? {} : {}), // placeholder for other metadata
+          analysis: result,
+        },
+      }).eq('id', sessionId);
+    } catch (e) {
+      console.error('Failed to persist analysis in Supabase:', e);
+    }
+  }
+
+  // --- 8. Return result ---
+  if (!result) throw new Error('No analysis result from Gemini');
+  return result;
 }

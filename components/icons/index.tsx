@@ -112,3 +112,77 @@ export const HistoryIcon: React.FC<IconProps> = ({ size = defaultIconSize, class
     <path strokeLinecap="round" strokeLinejoin="round" d="M12 7.5v4.25l2.5 2.5" />
   </svg>
 );
+
+/** AnalyticsIcon component. Bar chart style for analytics/dashboard. */
+export const AnalyticsIcon: React.FC<IconProps> = ({ size = defaultIconSize, className, ...props }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    strokeWidth={1.5}
+    stroke="currentColor"
+    width={size}
+    height={size}
+    className={cn("inline-block", className)}
+    aria-hidden="true"
+    {...props}
+  >
+    <rect x="4" y="13" width="3" height="7" rx="1" fill="currentColor" />
+    <rect x="10.5" y="9" width="3" height="11" rx="1" fill="currentColor" />
+    <rect x="17" y="5" width="3" height="15" rx="1" fill="currentColor" />
+  </svg>
+);
+
+/** RefreshIcon component. Circular arrow for refresh/re-analyze actions. */
+export const RefreshIcon: React.FC<IconProps> = ({ size = defaultIconSize, className, ...props }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    strokeWidth={1.5}
+    stroke="currentColor"
+    width={size}
+    height={size}
+    className={cn("inline-block", className)}
+    aria-hidden="true"
+    {...props}
+  >
+    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12a7.5 7.5 0 1 1 2.22 5.28M4.5 12V7.5m0 0H9" />
+  </svg>
+);
+
+/** TrashIcon component. Trash bin for delete/discard actions. */
+export const TrashIcon: React.FC<IconProps> = ({ size = defaultIconSize, className, ...props }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    strokeWidth={1.5}
+    stroke="currentColor"
+    width={size}
+    height={size}
+    className={cn("inline-block", className)}
+    aria-hidden="true"
+    {...props}
+  >
+    <path strokeLinecap="round" strokeLinejoin="round" d="M6 7.5V19a2 2 0 002 2h8a2 2 0 002-2V7.5M4 7.5h16M10 11v6m4-6v6M9 7.5V5a2 2 0 012-2h2a2 2 0 012 2v2.5" />
+  </svg>
+);
+
+/** CheckIcon component. Checkmark for confirm/save actions. */
+export const CheckIcon: React.FC<IconProps> = ({ size = defaultIconSize, className, ...props }) => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    fill="none"
+    viewBox="0 0 24 24"
+    strokeWidth={1.5}
+    stroke="currentColor"
+    width={size}
+    height={size}
+    className={cn("inline-block", className)}
+    aria-hidden="true"
+    {...props}
+  >
+    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+  </svg>
+);

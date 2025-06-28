@@ -214,3 +214,20 @@ export const SupabaseTranscriptSchema = z.object({
 
 export const SupabaseSessionArraySchema = z.array(SupabaseSessionSchema);
 export const SupabaseTranscriptArraySchema = z.array(SupabaseTranscriptSchema);
+
+// --- Gemini Session Analysis Types ---
+export interface SessionAnalysisResult {
+  summary: string;
+  keyMetrics: {
+    duration: number; // in seconds
+    userTurns: number;
+    aiTurns: number;
+    sentiment?: string;
+    [key: string]: any;
+  };
+  insights: string[];
+  quiz?: { question: string; answer: string }[];
+  visualHighlights?: string[];
+  audioHighlights?: string[];
+  [key: string]: any;
+}
