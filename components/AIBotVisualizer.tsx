@@ -41,7 +41,7 @@ const AIBotVisualizer: React.FC<AIBotVisualizerProps> = React.memo(({
       role="img"
       aria-label={botStateLabel}
       tabIndex={0}
-      style={{ position: 'relative' }}
+      style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' }}
     >
       <div className="ai-bot-morph-border" aria-hidden="true" />
       <AIBot />
