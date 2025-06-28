@@ -138,16 +138,22 @@ const App: React.FC = () => {
   };
 
   // Helper to get combined audio+video stream and video-only stream
-  const getCombinedMediaStream = async () => {
-    // Get video and audio streams separately
-    const videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-    const audioStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
-    // Combine tracks
-    const combinedStream = new MediaStream([
-      ...videoStream.getVideoTracks(),
-      ...audioStream.getAudioTracks(),
-    ]);
-    return { combinedStream, videoStream };
+  const getCombinedMediaStream = async (videoEnabled: boolean) => {
+    if (videoEnabled) {
+      // Get video and audio streams separately
+      const videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      const audioStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true });
+      // Combine tracks
+      const combinedStream = new MediaStream([
+        ...videoStream.getVideoTracks(),
+        ...audioStream.getAudioTracks(),
+      ]);
+      return { combinedStream, videoStream };
+    } else {
+      // Audio only
+      const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      return { combinedStream: audioStream, videoStream: null };
+    }
   };
 
   // 1. On start recording, create a session in Supabase and start MediaRecorder
@@ -162,14 +168,14 @@ const App: React.FC = () => {
         metadata: { systemInstruction },
       });
       sessionIdRef.current = session.id;
-      // Get combined and video-only streams
-      const { combinedStream, videoStream } = await getCombinedMediaStream();
+      // Get combined and video-only streams based on video enabled state
+      const { combinedStream, videoStream } = await getCombinedMediaStream(localIsVideoEnabled);
       combinedStreamRef.current = combinedStream;
       videoStreamRef.current = videoStream;
-      // Show live preview
-      setLocalIsVideoEnabled(true); // ensure preview is enabled
-      setMediaStream(videoStream); // set for VideoPreview
-      // Start MediaRecorder with combined stream
+      // Show live preview (only if video is enabled)
+      setLocalIsVideoEnabled(localIsVideoEnabled); // use current state
+      setMediaStream(videoStream); // set for VideoPreview (null if audio only)
+      // Start MediaRecorder with correct stream
       recordedChunksRef.current = [];
       let recorder;
       try {
@@ -184,14 +190,14 @@ const App: React.FC = () => {
         }
       };
       recorder.start();
-      startRecording(true); // always enable video for session
+      startRecording(localIsVideoEnabled); // use current state
     } catch (err: any) {
       setSaveError('Failed to start session: ' + (err.message || err.toString()));
     } finally {
       setIsSaving(false);
       setSavingMode('none');
     }
-  }, [startRecording, systemInstruction, selectedPersonaId]);
+  }, [startRecording, systemInstruction, selectedPersonaId, localIsVideoEnabled]);
 
   // 2. On transcript update, save to Supabase
   useEffect(() => {
