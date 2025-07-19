@@ -254,33 +254,23 @@ body {
 .ai-bot .head .face .eyes {
   display: flex;
   height: 8px;
-  gap: 6px;
   align-items: center;
   justify-content: center;
+  position: relative;
 }
 
-.ai-bot .head .face .eyes:before, .ai-bot .head .face .eyes:after {
+.ai-bot .head .face .eyes:before {
   content: '';
-  width: 6px;
-  height: 6px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   translate: var(--erx) 0;
   transition: scale 0.05s linear, translate 0.1s linear;
   display: block;
-}
-
-.ai-bot .head .face .eyes:before {
   scale: 1 var(--elh);
-  filter: drop-shadow(0 0 2px var(--bot-accent-blue));
+  filter: drop-shadow(0 0 3px var(--bot-accent-blue));
   background: var(--bot-accent-blue);
-  box-shadow: 0 0 4px var(--bot-accent-blue);
-}
-
-.ai-bot .head .face .eyes:after {
-  scale: 1 var(--erh);
-  filter: drop-shadow(0 0 2px var(--bot-accent-green));
-  background: var(--bot-accent-green);
-  box-shadow: 0 0 4px var(--bot-accent-green);
+  box-shadow: 0 0 6px var(--bot-accent-blue);
 }
 
 .ai-bot .head .face .mouth {
