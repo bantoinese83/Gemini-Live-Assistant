@@ -2,7 +2,8 @@ import React, { useRef, useState, useEffect } from "react";
 import type { SupabaseSession, SupabaseTranscript } from "../types";
 import LoadingSpinner from './LoadingSpinner';
 import type { SessionAnalysisResult } from '../types';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, Download } from 'lucide-react';
+import SessionDownloader from './SessionDownloader';
 
 interface SessionPlaybackModalProps {
   open: boolean;
@@ -143,6 +144,7 @@ const SessionPlaybackModal: React.FC<SessionPlaybackModalProps> = ({
 }) => {
   const modalRef = useRef<HTMLDivElement>(null);
   const lastActiveElement = useRef<HTMLElement | null>(null);
+  const [showDownloader, setShowDownloader] = useState(false);
   useEffect(() => {
     if (!open) {
       return;
@@ -198,7 +200,17 @@ const SessionPlaybackModal: React.FC<SessionPlaybackModalProps> = ({
         >
           &times;
         </button>
-        <h3 className="text-lg font-bold mb-2 text-[var(--color-text-primary)]">Session Playback</h3>
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-lg font-bold text-[var(--color-text-primary)]">Session Playback</h3>
+          <button
+            onClick={() => setShowDownloader(true)}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[var(--color-accent-blue)] text-white hover:bg-[var(--color-accent-blue-hover)] transition-colors text-sm font-medium"
+            aria-label="Download session"
+          >
+            <Download className="w-4 h-4" />
+            Download
+          </button>
+        </div>
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1 flex flex-col items-center justify-center">
             {audioUrl ? (
@@ -331,6 +343,25 @@ const SessionPlaybackModal: React.FC<SessionPlaybackModalProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Download Modal */}
+      {showDownloader && (
+        <div className="fixed inset-0 bg-black/70 z-60 flex items-center justify-center" onClick={() => setShowDownloader(false)}>
+          <div
+            className="bg-[var(--color-background-primary)] rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto m-4"
+            onClick={e => e.stopPropagation()}
+          >
+            <SessionDownloader
+              session={session}
+              transcripts={transcripts}
+              videoUrl={videoUrl}
+              audioUrl={audioUrl || null}
+              sessionAnalysis={sessionAnalysis}
+              onClose={() => setShowDownloader(false)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };
