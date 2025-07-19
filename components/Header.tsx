@@ -56,7 +56,7 @@ const Header: React.FC<HeaderProps> = ({
   // Calculate session duration
   const getSessionDuration = () => {
     if (!sessionStartTime) return '00:00:00';
-    const diff = currentTime.getTime() - sessionStartTime.getTime();
+    const diff = new Date().getTime() - sessionStartTime.getTime();
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
     const seconds = Math.floor((diff % (1000 * 60)) / 1000);
