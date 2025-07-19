@@ -18,11 +18,11 @@ interface StatusDisplayProps {
 }
 
 const statusIcons: Record<StatusType, React.ReactNode> = {
-  idle: <CheckCircle size={20} className="text-green-400 mr-2" aria-label="Ready" title="Ready" />,
-  recording: <Mic size={20} className="text-red-400 mr-2 animate-pulse" aria-label="Recording" title="Recording" />,
-  processing: <LoaderCircle size={20} className="text-yellow-300 mr-2 animate-spin-slow" aria-label="Processing" title="Processing" />,
-  error: <AlertTriangle size={20} className="text-orange-400 mr-2" aria-label="Error" title="Error" />,
-  connecting: <RefreshCcw size={20} className="text-blue-400 mr-2 animate-spin-slow" aria-label="Connecting" title="Connecting" />,
+  idle: <CheckCircle size={20} className="text-[var(--color-accent-green)] mr-2" aria-label="Ready" title="Ready" />,
+  recording: <Mic size={20} className="text-[var(--color-accent-red)] mr-2 animate-pulse" aria-label="Recording" title="Recording" />,
+  processing: <LoaderCircle size={20} className="text-[var(--color-accent-yellow)] mr-2 animate-spin-slow" aria-label="Processing" title="Processing" />,
+  error: <AlertTriangle size={20} className="text-[var(--color-accent-red)] mr-2" aria-label="Error" title="Error" />,
+  connecting: <RefreshCcw size={20} className="text-[var(--color-accent-blue)] mr-2 animate-spin-slow" aria-label="Connecting" title="Connecting" />,
 };
 
 const getStatusType = (statusMessage: string | null, errorMessage: string | null, isSaving?: boolean): StatusType => {
@@ -60,21 +60,21 @@ const StatusDisplay: React.FC<StatusDisplayProps> = React.memo(({ statusMessage,
   // Fade/slide transition
   return (
     <div
-      className={`transition-all duration-500 ease-in-out transform ${show ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'} p-3 ${computedType === 'recording' ? 'bg-gradient-to-r from-red-900/80 via-slate-800 to-red-700/60 animate-pulse-slow' : 'bg-[var(--color-background-tertiary)]'} ${BORDER_RADIUS_MD} shadow-md min-h-[60px] flex flex-col justify-center ${TRANSITION_MEDIUM} text-sm relative overflow-hidden`}
+      className={`transition-all duration-500 ease-in-out transform ${show ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'} p-3 ${computedType === 'recording' ? 'bg-gradient-to-r from-[var(--color-accent-red)]/20 via-[var(--color-background-secondary)] to-[var(--color-accent-red)]/10 animate-pulse-slow' : 'bg-[var(--color-background-secondary)]'} ${BORDER_RADIUS_MD} shadow-md min-h-[60px] flex flex-col justify-center ${TRANSITION_MEDIUM} text-sm relative overflow-hidden border border-[var(--color-border-primary)]`}
       role="status"
       aria-live="polite"
       aria-atomic="true"
     >
       {errorMessage && (
-        <div className="text-orange-400 flex items-center" role="alert">
+        <div className="text-[var(--color-accent-red)] flex items-center" role="alert">
           {statusIcons.error}
           <span className="font-semibold">Error:</span> {errorMessage}
         </div>
       )}
       {statusMessage && !errorMessage && (
-        <div className={`text-slate-300 flex items-center gap-3 ${computedType === 'recording' ? 'font-bold text-lg tracking-wide' : ''}`}> 
+        <div className={`text-[var(--color-text-primary)] flex items-center gap-3 ${computedType === 'recording' ? 'font-bold text-lg tracking-wide' : ''}`}> 
           {statusIcons[computedType]}
-          <span className="font-semibold">Status:</span>
+          <span className="font-semibold text-[var(--color-text-secondary)]">Status:</span>
           {computedType === 'recording' ? (
             <>
               <span className="relative flex items-center gap-2">
@@ -91,18 +91,18 @@ const StatusDisplay: React.FC<StatusDisplayProps> = React.memo(({ statusMessage,
               </span>
             </>
           ) : computedType === 'processing' ? (
-            <span className="text-yellow-300 animate-pulse">Processing...</span>
+            <span className="text-[var(--color-accent-yellow)] animate-pulse">Processing...</span>
           ) : computedType === 'idle' ? (
-            <span className="text-green-400">Ready for your next session.</span>
+            <span className="text-[var(--color-accent-green)]">Ready for your next session.</span>
           ) : computedType === 'connecting' ? (
-            <span className="text-blue-300">Connecting...</span>
+            <span className="text-[var(--color-accent-blue)]">Connecting...</span>
           ) : (
             <span>{statusMessage}</span>
           )}
         </div>
       )}
       {!errorMessage && !statusMessage && (
-        <div className="text-[var(--color-text-muted)] italic flex items-center">{statusIcons.idle} Ready for your next session.</div>
+        <div className="text-[var(--color-text-secondary)] italic flex items-center">{statusIcons.idle} Ready for your next session.</div>
       )}
     </div>
   );
