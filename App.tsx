@@ -1037,6 +1037,9 @@ const App: React.FC = () => {
         showDashboard={showDashboard}
         isScreenSharing={isScreenSharing}
         screenStream={screenStream}
+        isRecording={isRecording}
+        sessionStartTime={sessionStartTime}
+        currentPersona={getPersonaName()}
       />
       <main className="flex flex-1 min-h-0 overflow-auto">
         <div className="flex flex-1 flex-col lg:flex-row w-full">
