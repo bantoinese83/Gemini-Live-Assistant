@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Analytics } from '@vercel/analytics/react';
 import useGeminiLive from './hooks/useGeminiLive';
 import ControlPanel from './components/ControlPanel';
 import TranscriptDisplay from './components/TranscriptDisplay';
@@ -1243,6 +1244,7 @@ const App: React.FC = () => {
         </div>
       </main>
       <Footer />
+      <Analytics />
     </div>
   );
 };
