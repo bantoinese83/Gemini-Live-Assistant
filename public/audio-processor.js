@@ -25,19 +25,15 @@ class AudioProcessor extends AudioWorkletProcessor {
    */
   process(inputs, outputs, parameters) {
     const input = inputs[0];
-    const output = outputs[0];
     
     if (!input || !input[0]) {
       return true; // Continue processing
     }
 
     const inputChannel = input[0];
-    const outputChannel = output[0];
     
-    // Copy input to output (pass-through)
-    for (let i = 0; i < inputChannel.length; i++) {
-      outputChannel[i] = inputChannel[i];
-    }
+    // Don't output audio to avoid feedback loop
+    // This processor is only for capturing audio to send to Gemini
 
     // Accumulate audio data in buffer
     for (let i = 0; i < inputChannel.length; i++) {

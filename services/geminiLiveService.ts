@@ -108,7 +108,7 @@ export class GeminiLiveAI {
     try {
       const audioWorkletNode = new AudioWorkletNode(this.inputAudioContext, 'audio-processor', {
         numberOfInputs: 1,
-        numberOfOutputs: 1,
+        numberOfOutputs: 0, // No outputs to avoid audio feedback
         channelCount: 1,
         channelCountMode: 'explicit',
         channelInterpretation: 'discrete'
@@ -439,7 +439,8 @@ export class GeminiLiveAI {
       this.audioWorkletNode = this.createAudioWorkletNode();
       if (this.audioWorkletNode) {
         this._inputNode.connect(this.audioWorkletNode); // Connect gain node to audio worklet
-        this.audioWorkletNode.connect(this.inputAudioContext.destination); // Connect to destination to keep processing
+        // Don't connect to destination to avoid audio feedback loop
+        // The audio worklet processes audio for sending to Gemini, not for playback
       } else {
         console.warn('Audio worklet node creation failed, audio processing may not work properly');
       }
