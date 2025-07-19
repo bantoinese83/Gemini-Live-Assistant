@@ -31,21 +31,21 @@ interface ControlPanelProps {
   onPersonaChange: (personaId: string) => void;
 }
 
-// Persona icon mapping
+// Persona icon mapping with Google brand colors
 const personaIcons: Record<string, React.ReactNode> = {
-  'interview-coach': <User2 size={28} className="mb-1 text-accent-400" aria-label="Interview Coach" />,
-  'dating-coach': <Heart size={28} className="mb-1 text-accent-400" aria-label="Dating Coach" />,
-  'motivational-mentor': <Rocket size={28} className="mb-1 text-accent-400" aria-label="Motivational Mentor" />,
-  'friendly-conversationalist': <Smile size={28} className="mb-1 text-accent-400" aria-label="Friendly Conversationalist" />,
-  'tech-support-agent': <Laptop size={28} className="mb-1 text-accent-400" aria-label="Tech Support Agent" />,
-  'language-tutor': <Languages size={28} className="mb-1 text-accent-400" aria-label="Language Tutor" />,
-  'fitness-coach': <Dumbbell size={28} className="mb-1 text-accent-400" aria-label="Fitness Coach" />,
-  'standup-comedian': <Mic size={28} className="mb-1 text-accent-400" aria-label="Standup Comedian" />,
-  'startup-advisor': <TrendingUp size={28} className="mb-1 text-accent-400" aria-label="Startup Advisor" />,
-  'storytelling-companion': <BookOpen size={28} className="mb-1 text-accent-400" aria-label="Storytelling Companion" />,
-  'mindfulness-guide': <Sparkles size={28} className="mb-1 text-accent-400" aria-label="Mindfulness Guide" />,
-  'debate-partner': <Scale size={28} className="mb-1 text-accent-400" aria-label="Debate Partner" />,
-  'coding-buddy': <Code size={28} className="mb-1 text-accent-400" aria-label="Coding Buddy" />,
+  'interview-coach': <User2 size={28} className="mb-1 text-[#4285f4]" aria-label="Interview Coach" />, // Google Blue
+  'dating-coach': <Heart size={28} className="mb-1 text-[#ea4335]" aria-label="Dating Coach" />, // Google Red
+  'motivational-mentor': <Rocket size={28} className="mb-1 text-[#fbbc05]" aria-label="Motivational Mentor" />, // Google Yellow
+  'friendly-conversationalist': <Smile size={28} className="mb-1 text-[#34a853]" aria-label="Friendly Conversationalist" />, // Google Green
+  'tech-support-agent': <Laptop size={28} className="mb-1 text-[#4285f4]" aria-label="Tech Support Agent" />, // Google Blue
+  'language-tutor': <Languages size={28} className="mb-1 text-[#34a853]" aria-label="Language Tutor" />, // Google Green
+  'fitness-coach': <Dumbbell size={28} className="mb-1 text-[#fbbc05]" aria-label="Fitness Coach" />, // Google Yellow
+  'standup-comedian': <Mic size={28} className="mb-1 text-[#ea4335]" aria-label="Standup Comedian" />, // Google Red
+  'startup-advisor': <TrendingUp size={28} className="mb-1 text-[#34a853]" aria-label="Startup Advisor" />, // Google Green
+  'storytelling-companion': <BookOpen size={28} className="mb-1 text-[#fbbc05]" aria-label="Storytelling Companion" />, // Google Yellow
+  'mindfulness-guide': <Sparkles size={28} className="mb-1 text-[#34a853]" aria-label="Mindfulness Guide" />, // Google Green
+  'debate-partner': <Scale size={28} className="mb-1 text-[#ea4335]" aria-label="Debate Partner" />, // Google Red
+  'coding-buddy': <Code size={28} className="mb-1 text-[#4285f4]" aria-label="Coding Buddy" />, // Google Blue
 };
 
 /**
