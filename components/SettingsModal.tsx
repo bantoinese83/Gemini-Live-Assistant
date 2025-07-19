@@ -87,6 +87,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   // Check for changes
   useEffect(() => {
@@ -100,6 +101,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
       setSettings(currentSettings);
       setHasChanges(false);
       setShowSuccess(false);
+      setSaveError(null);
     }
   }, [open, currentSettings]);
 
@@ -109,12 +111,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
     }
 
     setIsSaving(true);
+    setSaveError(null);
     try {
       await onSaveSettings(settings);
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 2000);
     } catch (error) {
       console.error('Failed to save settings:', error);
+      setSaveError(error instanceof Error ? error.message : 'Failed to save settings');
     } finally {
       setIsSaving(false);
     }
@@ -240,6 +244,16 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
               <div className="flex items-center gap-2 text-[var(--color-accent-yellow)]">
                 <AlertCircle className="w-5 h-5" />
                 <span className="font-medium">Settings cannot be changed while recording</span>
+              </div>
+            </div>
+          )}
+
+          {/* Error Message */}
+          {saveError && (
+            <div className="mt-6 p-4 bg-[var(--color-accent-red)]/10 border border-[var(--color-accent-red)]/20 rounded-lg">
+              <div className="flex items-center gap-2 text-[var(--color-accent-red)]">
+                <AlertCircle className="w-5 h-5" />
+                <span className="font-medium">Error: {saveError}</span>
               </div>
             </div>
           )}
