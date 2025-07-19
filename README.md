@@ -8,6 +8,10 @@ Watch the Gemini Live Assistant in action:
 
 ![Demo Video](gla-sr.mov)
 
+## 🌐 Live App
+
+Try the Gemini Live Assistant right now: **[https://gemini-live-assistant.vercel.app/](https://gemini-live-assistant.vercel.app/)**
+
 ---
 
 ## 🌟 Features
