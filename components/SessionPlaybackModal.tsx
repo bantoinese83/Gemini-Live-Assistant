@@ -77,7 +77,7 @@ const CustomAudioPlayer: React.FC<{ src: string }> = ({ src }) => {
   };
 
   return (
-    <div className="w-full max-w-md flex flex-col items-center bg-slate-900 rounded-lg p-4 shadow-lg">
+    <div className="w-full max-w-md flex flex-col items-center bg-[var(--color-background-secondary)] rounded-lg p-4 shadow-lg border border-[var(--color-border-primary)]">
       <audio ref={audioRef} preload="metadata" className="hidden" controls>
         <source src={src} type="audio/webm" />
         Your browser does not support the audio element.
@@ -85,7 +85,7 @@ const CustomAudioPlayer: React.FC<{ src: string }> = ({ src }) => {
       <div className="flex items-center w-full gap-3">
         <button
           onClick={handlePlayPause}
-          className={`rounded-full p-2 bg-[var(--color-accent-teal)] text-white shadow-md hover:bg-[var(--color-accent-teal-dark)] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-accent-500/70`}
+          className={`rounded-full p-2 bg-[var(--color-accent-blue)] text-white shadow-md hover:bg-[var(--color-accent-blue-hover)] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-blue)]/70`}
           aria-label={isPlaying ? "Pause" : "Play"}
         >
           {isPlaying ? (
@@ -120,9 +120,9 @@ const CustomAudioPlayer: React.FC<{ src: string }> = ({ src }) => {
           step={0.01}
           value={progress}
           onChange={handleSeek}
-          className="flex-1 accent-[var(--color-accent-teal)] h-2 rounded-lg bg-slate-700"
+          className="flex-1 accent-[var(--color-accent-blue)] h-2 rounded-lg bg-[var(--color-background-tertiary)]"
         />
-        <span className="text-xs text-slate-300 w-12 text-right">
+        <span className="text-xs text-[var(--color-text-secondary)] w-12 text-right">
           {formatTime(progress)} / {formatTime(duration)}
         </span>
       </div>
@@ -193,12 +193,12 @@ const SessionPlaybackModal: React.FC<SessionPlaybackModalProps> = ({
       >
         <button
           onClick={onClose}
-          className="absolute top-3 right-3 text-slate-400 hover:text-slate-200 text-xl font-bold"
+          className="absolute top-3 right-3 text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] text-xl font-bold"
           aria-label="Close"
         >
           &times;
         </button>
-        <h3 className="text-lg font-bold mb-2">Session Playback</h3>
+        <h3 className="text-lg font-bold mb-2 text-[var(--color-text-primary)]">Session Playback</h3>
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1 flex flex-col items-center justify-center">
             {audioUrl ? (
@@ -210,13 +210,13 @@ const SessionPlaybackModal: React.FC<SessionPlaybackModalProps> = ({
                 className="rounded-lg shadow-lg w-full max-w-md aspect-video bg-black"
               />
             ) : (
-              <div className="w-full max-w-md aspect-video flex items-center justify-center bg-slate-800 rounded-lg text-slate-400 text-xs">
+              <div className="w-full max-w-md aspect-video flex items-center justify-center bg-[var(--color-background-tertiary)] rounded-lg text-[var(--color-text-muted)] text-xs border border-[var(--color-border-primary)]">
                 No Media
               </div>
             )}
           </div>
-          <div className="flex-1 overflow-y-auto max-h-72 bg-slate-900 rounded-lg p-3 shadow-inner">
-            <h4 className="font-semibold text-slate-200 mb-2 text-sm">
+          <div className="flex-1 overflow-y-auto max-h-72 bg-[var(--color-background-secondary)] rounded-lg p-3 shadow-inner border border-[var(--color-border-primary)]">
+            <h4 className="font-semibold text-[var(--color-text-primary)] mb-2 text-sm">
               Transcript
             </h4>
             {transcripts.length > 0 ? (
@@ -224,29 +224,29 @@ const SessionPlaybackModal: React.FC<SessionPlaybackModalProps> = ({
                 {transcripts.map((t, idx) => (
                   <li key={idx} className="flex gap-2 items-start">
                     <span
-                      className={`font-bold ${t.speaker === "user" ? "text-green-400" : "text-blue-400"}`}
+                      className={`font-bold ${t.speaker === "user" ? "text-[var(--color-accent-green)]" : "text-[var(--color-accent-blue)]"}`}
                     >
                       {t.speaker === "user" ? "You:" : "AI:"}
                     </span>
-                    <span className="text-slate-100">{t.text}</span>
+                    <span className="text-[var(--color-text-primary)]">{t.text}</span>
                   </li>
                 ))}
               </ul>
             ) : (
-              <div className="text-slate-400 text-xs">
+              <div className="text-[var(--color-text-muted)] text-xs">
                 No transcript available.
               </div>
             )}
           </div>
         </div>
-        <div className="mt-2 bg-slate-800 rounded-xl p-4 shadow-inner">
+        <div className="mt-2 bg-[var(--color-background-secondary)] rounded-xl p-4 shadow-inner border border-[var(--color-border-primary)]">
           <div className="flex items-center justify-between mb-2">
-            <h4 className="font-semibold text-accent-400 text-base flex items-center gap-2">
+            <h4 className="font-semibold text-[var(--color-accent-blue)] text-base flex items-center gap-2">
               <span role="img" aria-label="Insights">💡</span> Session Analysis & Insights
             </h4>
             {onReanalyze && (
               <button
-                className="ml-2 p-2 rounded-lg hover:bg-[var(--color-background-tertiary)] focus:outline-none focus:ring-2 focus:ring-accent-500/70"
+                className="ml-2 p-2 rounded-lg hover:bg-[var(--color-background-tertiary)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-blue)]/70 text-[var(--color-text-primary)]"
                 onClick={onReanalyze}
                 disabled={analysisLoading}
                 aria-label="Re-analyze session with Gemini"
@@ -261,16 +261,16 @@ const SessionPlaybackModal: React.FC<SessionPlaybackModalProps> = ({
             )}
           </div>
           {analysisLoading ? (
-            <div className="flex items-center gap-2 text-slate-300"><LoadingSpinner /> Analyzing session...</div>
+            <div className="flex items-center gap-2 text-[var(--color-text-primary)]"><LoadingSpinner /> Analyzing session...</div>
           ) : sessionAnalysis ? (
             <div className="space-y-3">
               <div>
-                <span className="font-semibold text-slate-200">Summary:</span>
-                <div className="text-slate-100 mt-1 text-sm">{sessionAnalysis.summary}</div>
+                <span className="font-semibold text-[var(--color-text-primary)]">Summary:</span>
+                <div className="text-[var(--color-text-secondary)] mt-1 text-sm">{sessionAnalysis.summary}</div>
               </div>
               <div>
-                <span className="font-semibold text-slate-200">Key Metrics:</span>
-                <ul className="text-slate-100 mt-1 text-sm ml-4 list-disc">
+                <span className="font-semibold text-[var(--color-text-primary)]">Key Metrics:</span>
+                <ul className="text-[var(--color-text-secondary)] mt-1 text-sm ml-4 list-disc">
                   <li>Duration: {sessionAnalysis.keyMetrics.duration}s</li>
                   <li>User Turns: {sessionAnalysis.keyMetrics.userTurns}</li>
                   <li>AI Turns: {sessionAnalysis.keyMetrics.aiTurns}</li>
@@ -279,8 +279,8 @@ const SessionPlaybackModal: React.FC<SessionPlaybackModalProps> = ({
               </div>
               {sessionAnalysis.insights && sessionAnalysis.insights.length > 0 && (
                 <div>
-                  <span className="font-semibold text-slate-200">Insights:</span>
-                  <ul className="text-slate-100 mt-1 text-sm ml-4 list-disc">
+                  <span className="font-semibold text-[var(--color-text-primary)]">Insights:</span>
+                  <ul className="text-[var(--color-text-secondary)] mt-1 text-sm ml-4 list-disc">
                     {sessionAnalysis.insights.map((insight, idx) => (
                       <li key={idx}>{insight}</li>
                     ))}
@@ -289,8 +289,8 @@ const SessionPlaybackModal: React.FC<SessionPlaybackModalProps> = ({
               )}
               {sessionAnalysis.quiz && sessionAnalysis.quiz.length > 0 && (
                 <div>
-                  <span className="font-semibold text-slate-200">Quiz:</span>
-                  <ul className="text-slate-100 mt-1 text-sm ml-4 list-decimal">
+                  <span className="font-semibold text-[var(--color-text-primary)]">Quiz:</span>
+                  <ul className="text-[var(--color-text-secondary)] mt-1 text-sm ml-4 list-decimal">
                     {sessionAnalysis.quiz.map((q, idx) => (
                       <li key={idx}><span className="font-semibold">Q:</span> {q.question} <br /><span className="font-semibold">A:</span> {q.answer}</li>
                     ))}
@@ -299,8 +299,8 @@ const SessionPlaybackModal: React.FC<SessionPlaybackModalProps> = ({
               )}
               {(sessionAnalysis.visualHighlights && sessionAnalysis.visualHighlights.length > 0) && (
                 <div>
-                  <span className="font-semibold text-slate-200">Visual Highlights:</span>
-                  <ul className="text-slate-100 mt-1 text-sm ml-4 list-disc">
+                  <span className="font-semibold text-[var(--color-text-primary)]">Visual Highlights:</span>
+                  <ul className="text-[var(--color-text-secondary)] mt-1 text-sm ml-4 list-disc">
                     {sessionAnalysis.visualHighlights.map((h, idx) => (
                       <li key={idx}>{h}</li>
                     ))}
@@ -309,8 +309,8 @@ const SessionPlaybackModal: React.FC<SessionPlaybackModalProps> = ({
               )}
               {(sessionAnalysis.audioHighlights && sessionAnalysis.audioHighlights.length > 0) && (
                 <div>
-                  <span className="font-semibold text-slate-200">Audio Highlights:</span>
-                  <ul className="text-slate-100 mt-1 text-sm ml-4 list-disc">
+                  <span className="font-semibold text-[var(--color-text-primary)]">Audio Highlights:</span>
+                  <ul className="text-[var(--color-text-secondary)] mt-1 text-sm ml-4 list-disc">
                     {sessionAnalysis.audioHighlights.map((h, idx) => (
                       <li key={idx}>{h}</li>
                     ))}
@@ -319,13 +319,13 @@ const SessionPlaybackModal: React.FC<SessionPlaybackModalProps> = ({
               )}
             </div>
           ) : (
-            <div className="text-slate-400 text-xs">No analysis available for this session.</div>
+            <div className="text-[var(--color-text-muted)] text-xs">No analysis available for this session.</div>
           )}
         </div>
         <div className="flex justify-end mt-2">
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded bg-slate-700 text-white hover:bg-slate-600"
+            className="px-4 py-2 rounded bg-[var(--color-accent-blue)] text-white hover:bg-[var(--color-accent-blue-hover)] transition-colors"
           >
             Close
           </button>

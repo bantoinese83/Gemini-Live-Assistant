@@ -11,10 +11,10 @@ interface AnalyticsDrawerProps {
 }
 
 const sentimentColors: Record<string, string> = {
-  positive: '#22c55e',
-  negative: '#ef4444',
-  neutral: '#3b82f6',
-  unknown: '#a3a3a3',
+  positive: '#34a853', // Google Green
+  negative: '#ea4335', // Google Red
+  neutral: '#4285f4', // Google Blue
+  unknown: '#9aa0a6', // Google Light Gray
 };
 
 // Truncate label helper
@@ -25,10 +25,10 @@ const InsightsTooltip = ({ active, payload }: any) => {
   if (active && payload && payload.length) {
     const { insight, count } = payload[0].payload;
     return (
-      <div className="bg-slate-900 text-slate-100 p-2 rounded shadow-lg max-w-xs text-xs">
+      <div className="bg-[var(--color-background-secondary)] text-[var(--color-text-primary)] p-2 rounded shadow-lg max-w-xs text-xs border border-[var(--color-border-primary)]">
         <div className="font-semibold mb-1">Insight</div>
         <div className="mb-1">{insight}</div>
-        <div className="text-accent-400">Count: {count}</div>
+        <div className="text-[var(--color-accent-blue)]">Count: {count}</div>
       </div>
     );
   }
@@ -38,56 +38,56 @@ const InsightsTooltip = ({ active, payload }: any) => {
 // Persona metrics mapping
 const PERSONA_METRICS: Record<string, { key: string; label: string; type: 'percent' | 'score'; color: string }[]> = {
   'Interview Coach': [
-    { key: 'starUsage', label: 'STAR Method Usage', type: 'percent', color: '#38bdf8' },
-    { key: 'clarity', label: 'Clarity', type: 'score', color: '#a3e635' },
+    { key: 'starUsage', label: 'STAR Method Usage', type: 'percent', color: '#4285f4' }, // Google Blue
+    { key: 'clarity', label: 'Clarity', type: 'score', color: '#34a853' }, // Google Green
   ],
   'Dating Coach': [
-    { key: 'confidence', label: 'Confidence', type: 'score', color: '#fbbf24' },
-    { key: 'authenticity', label: 'Authenticity', type: 'score', color: '#f472b6' },
+    { key: 'confidence', label: 'Confidence', type: 'score', color: '#fbbc05' }, // Google Yellow
+    { key: 'authenticity', label: 'Authenticity', type: 'score', color: '#ea4335' }, // Google Red
   ],
   'Motivational Mentor': [
-    { key: 'motivation', label: 'Motivation', type: 'score', color: '#22c55e' },
-    { key: 'confidence', label: 'Confidence', type: 'score', color: '#fbbf24' },
+    { key: 'motivation', label: 'Motivation', type: 'score', color: '#34a853' }, // Google Green
+    { key: 'confidence', label: 'Confidence', type: 'score', color: '#fbbc05' }, // Google Yellow
   ],
   'Friendly Conversationalist': [
-    { key: 'engagement', label: 'Engagement', type: 'score', color: '#3b82f6' },
-    { key: 'comfort', label: 'Comfort', type: 'score', color: '#a3e635' },
+    { key: 'engagement', label: 'Engagement', type: 'score', color: '#4285f4' }, // Google Blue
+    { key: 'comfort', label: 'Comfort', type: 'score', color: '#34a853' }, // Google Green
   ],
   'Tech Support Agent': [
-    { key: 'understanding', label: 'Understanding', type: 'score', color: '#38bdf8' },
-    { key: 'frustration', label: 'Frustration', type: 'score', color: '#ef4444' },
+    { key: 'understanding', label: 'Understanding', type: 'score', color: '#4285f4' }, // Google Blue
+    { key: 'frustration', label: 'Frustration', type: 'score', color: '#ea4335' }, // Google Red
   ],
   'Language Tutor': [
-    { key: 'accuracy', label: 'Accuracy', type: 'percent', color: '#a3e635' },
-    { key: 'fluency', label: 'Fluency', type: 'score', color: '#3b82f6' },
+    { key: 'accuracy', label: 'Accuracy', type: 'percent', color: '#34a853' }, // Google Green
+    { key: 'fluency', label: 'Fluency', type: 'score', color: '#4285f4' }, // Google Blue
   ],
   'Fitness Coach': [
-    { key: 'energy', label: 'Energy', type: 'score', color: '#fbbf24' },
-    { key: 'goalClarity', label: 'Goal Clarity', type: 'score', color: '#38bdf8' },
+    { key: 'energy', label: 'Energy', type: 'score', color: '#fbbc05' }, // Google Yellow
+    { key: 'goalClarity', label: 'Goal Clarity', type: 'score', color: '#4285f4' }, // Google Blue
   ],
   'Standup Comedian': [
-    { key: 'laughter', label: 'Laughter', type: 'score', color: '#fbbf24' },
-    { key: 'engagement', label: 'Engagement', type: 'score', color: '#3b82f6' },
+    { key: 'laughter', label: 'Laughter', type: 'score', color: '#fbbc05' }, // Google Yellow
+    { key: 'engagement', label: 'Engagement', type: 'score', color: '#4285f4' }, // Google Blue
   ],
   'Startup Advisor': [
-    { key: 'innovation', label: 'Innovation', type: 'score', color: '#22c55e' },
-    { key: 'feasibility', label: 'Feasibility', type: 'score', color: '#38bdf8' },
+    { key: 'innovation', label: 'Innovation', type: 'score', color: '#34a853' }, // Google Green
+    { key: 'feasibility', label: 'Feasibility', type: 'score', color: '#4285f4' }, // Google Blue
   ],
   'Storytelling Companion': [
-    { key: 'creativity', label: 'Creativity', type: 'score', color: '#f472b6' },
-    { key: 'engagement', label: 'Engagement', type: 'score', color: '#3b82f6' },
+    { key: 'creativity', label: 'Creativity', type: 'score', color: '#ea4335' }, // Google Red
+    { key: 'engagement', label: 'Engagement', type: 'score', color: '#4285f4' }, // Google Blue
   ],
   'Mindfulness Guide': [
-    { key: 'calmness', label: 'Calmness', type: 'score', color: '#a3e635' },
-    { key: 'awareness', label: 'Awareness', type: 'score', color: '#38bdf8' },
+    { key: 'calmness', label: 'Calmness', type: 'score', color: '#34a853' }, // Google Green
+    { key: 'awareness', label: 'Awareness', type: 'score', color: '#4285f4' }, // Google Blue
   ],
   'Debate Partner': [
-    { key: 'logic', label: 'Logic', type: 'score', color: '#fbbf24' },
-    { key: 'persuasion', label: 'Persuasion', type: 'score', color: '#ef4444' },
+    { key: 'logic', label: 'Logic', type: 'score', color: '#fbbc05' }, // Google Yellow
+    { key: 'persuasion', label: 'Persuasion', type: 'score', color: '#ea4335' }, // Google Red
   ],
   'Coding Buddy': [
-    { key: 'problemSolving', label: 'Problem Solving', type: 'score', color: '#22c55e' },
-    { key: 'codeQuality', label: 'Code Quality', type: 'score', color: '#38bdf8' },
+    { key: 'problemSolving', label: 'Problem Solving', type: 'score', color: '#34a853' }, // Google Green
+    { key: 'codeQuality', label: 'Code Quality', type: 'score', color: '#4285f4' }, // Google Blue
   ],
 };
 
@@ -149,14 +149,14 @@ const AnalyticsDrawer: React.FC<AnalyticsDrawerProps> = ({ open, loading, error,
     {
       value: analytics.totalSessions,
       max: totalSessionsGoal,
-      color: '#38bdf8',
+      color: '#4285f4', // Google Blue
       label: 'Sessions',
       unit: '',
     },
     {
       value: analytics.avgDuration,
       max: avgDurationGoal,
-      color: '#a3e635',
+      color: '#34a853', // Google Green
       label: 'Avg. Secs',
       unit: 's',
     },
@@ -185,14 +185,14 @@ const AnalyticsDrawer: React.FC<AnalyticsDrawerProps> = ({ open, loading, error,
         style={{ right: 0, top: 0, position: 'fixed' }}
       >
         <div className="flex items-center justify-between px-6 pt-6 pb-3 border-b border-[var(--color-border-primary)]">
-          <h2 className="text-2xl font-bold">Session Analytics</h2>
-          <button onClick={onClose} className="text-3xl font-bold px-3 py-1 rounded hover:bg-[var(--color-background-tertiary)] focus:outline-none" aria-label="Close">×</button>
+          <h2 className="text-2xl font-bold text-[var(--color-text-primary)]">Session Analytics</h2>
+          <button onClick={onClose} className="text-3xl font-bold px-3 py-1 rounded hover:bg-[var(--color-background-tertiary)] focus:outline-none text-[var(--color-text-primary)]" aria-label="Close">×</button>
         </div>
         <div className="flex-1 p-8 overflow-y-auto min-h-0 flex flex-col gap-10">
           {loading ? (
             <div className="text-center text-[var(--color-text-muted)] py-8">Loading...</div>
           ) : error ? (
-            <div className="text-red-400 text-center py-8">{error}</div>
+            <div className="text-[var(--color-accent-red)] text-center py-8">{error}</div>
           ) : analytics ? (
             <div className="flex flex-col gap-10">
               {/* Concentric Activity Rings Row */}
