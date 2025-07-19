@@ -60,7 +60,7 @@ const StatusDisplay: React.FC<StatusDisplayProps> = React.memo(({ statusMessage,
   // Fade/slide transition
   return (
     <div
-      className={`transition-all duration-500 ease-in-out transform ${show ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'} p-3 ${computedType === 'recording' ? 'bg-gradient-to-r from-[var(--color-accent-red)]/20 via-[var(--color-background-secondary)] to-[var(--color-accent-red)]/10 animate-pulse-slow' : 'bg-[var(--color-background-secondary)]'} ${BORDER_RADIUS_MD} shadow-md min-h-[60px] flex flex-col justify-center ${TRANSITION_MEDIUM} text-sm relative overflow-hidden border border-[var(--color-border-primary)]`}
+      className={`transition-all duration-500 ease-in-out transform ${show ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2'} p-3 ${computedType === 'recording' ? 'bg-gradient-to-r from-[var(--color-accent-red)]/20 via-[var(--color-background-secondary)] to-[var(--color-accent-red)]/10 animate-pulse-slow' : 'bg-[var(--color-background-secondary)]'} ${BORDER_RADIUS_MD} shadow-md min-h-[60px] flex flex-col justify-center ${TRANSITION_MEDIUM} text-sm relative overflow-hidden border border-[var(--color-border-primary)] hover-lift`}
       role="status"
       aria-live="polite"
       aria-atomic="true"

@@ -82,7 +82,7 @@ const ControlPanel: React.FC<ControlPanelProps> = React.memo(({
           <button
             key={persona.id}
             type="button"
-            className={`flex flex-col items-center px-3 py-2 rounded-lg border transition-all shadow-sm min-w-[120px] max-w-[160px] focus:outline-none focus:ring-2 focus:ring-accent-500/70 bg-[var(--color-background-secondary)] hover:bg-[var(--color-background-tertiary)] ${selectedPersonaId === persona.id ? 'border-accent-500 ring-2 ring-accent-500/60 scale-105' : 'border-slate-600/40'}`}
+            className={`flex flex-col items-center px-3 py-2 rounded-lg border transition-all duration-200 shadow-sm min-w-[120px] max-w-[160px] focus:outline-none focus:ring-2 focus:ring-accent-500/70 bg-[var(--color-background-secondary)] hover:bg-[var(--color-background-tertiary)] hover-lift button-press focus-enhanced ${selectedPersonaId === persona.id ? 'border-accent-500 ring-2 ring-accent-500/60 scale-105' : 'border-slate-600/40'}`}
             aria-pressed={selectedPersonaId === persona.id}
             aria-label={persona.name}
             onClick={() => {
@@ -112,7 +112,7 @@ const ControlPanel: React.FC<ControlPanelProps> = React.memo(({
           disabled={isDisabledBySystem || (isRecording ? false : isRecording)}
           aria-label={isRecording ? 'Stop Recording' : 'Start Recording'}
           title={isRecording ? 'Stop Recording' : 'Start Recording'}
-          className={`player-btn circle-btn ${isRecording ? 'player-btn--stop' : 'player-btn--play'} ${isDisabledBySystem ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+          className={`player-btn circle-btn button-press ${isRecording ? 'player-btn--stop' : 'player-btn--play'} ${isDisabledBySystem ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
         >
           {/* Buffering ring (optional, only when recording) */}
           {isRecording && <span className="buffering-ring" />}
@@ -141,7 +141,7 @@ const ControlPanel: React.FC<ControlPanelProps> = React.memo(({
           disabled={isRecording || isDisabledBySystem}
           aria-label="Reset Session"
           title="Reset Session"
-          className={`player-btn circle-btn player-btn--reset ${isRecording || isDisabledBySystem ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+          className={`player-btn circle-btn player-btn--reset button-press ${isRecording || isDisabledBySystem ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
         >
           <span className="reset-icon-wrapper">
             <RotateCcw size={36} className="reset-icon strong-glow" aria-hidden="true" />

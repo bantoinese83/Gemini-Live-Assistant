@@ -41,7 +41,7 @@ const Header: React.FC<HeaderProps> = ({ onShowHistory, onToggleDashboard, showD
       </span>
     <div className="flex flex-col gap-4 mr-8 sm:mr-12">
       <button
-        className="w-12 h-12 rounded-full bg-[var(--color-accent-green)] shadow-xl flex items-center justify-center hover:bg-[var(--color-accent-green-hover)] focus:outline-none focus:ring-4 focus:ring-[var(--color-accent-blue)] transition"
+        className="w-12 h-12 rounded-full bg-[var(--color-accent-green)] shadow-xl flex items-center justify-center hover:bg-[var(--color-accent-green-hover)] focus:outline-none focus:ring-4 focus:ring-[var(--color-accent-blue)] transition-all duration-200 hover-lift button-press focus-enhanced"
         onClick={onShowHistory}
         aria-label="Show History"
         title="Show History"
@@ -49,7 +49,7 @@ const Header: React.FC<HeaderProps> = ({ onShowHistory, onToggleDashboard, showD
         <History size={24} className="text-white" />
       </button>
       <button
-        className="w-12 h-12 rounded-full bg-[var(--color-accent-blue)] shadow-xl flex items-center justify-center hover:bg-[var(--color-accent-blue-hover)] focus:outline-none focus:ring-4 focus:ring-[var(--color-accent-green)] transition"
+        className="w-12 h-12 rounded-full bg-[var(--color-accent-blue)] shadow-xl flex items-center justify-center hover:bg-[var(--color-accent-blue-hover)] focus:outline-none focus:ring-4 focus:ring-[var(--color-accent-green)] transition-all duration-200 hover-lift button-press focus-enhanced"
         onClick={onToggleDashboard}
         aria-label={showDashboard ? 'Hide Analytics' : 'Show Analytics'}
         title={showDashboard ? 'Hide Analytics' : 'Show Analytics'}

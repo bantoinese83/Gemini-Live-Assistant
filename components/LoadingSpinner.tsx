@@ -22,11 +22,12 @@ const LoadingSpinner: React.FC<{ size?: number }> = React.memo(({ size = 48 }) =
           to the themed accent color, creating the classic "C" shape or chasing dots effect.
       */}
       <div 
-        className="animate-spin rounded-full border-4 border-transparent"
+        className="animate-spin rounded-full border-4 border-transparent shadow-lg"
         style={{
           width: size,
           height: size,
-          borderTopColor: 'var(--color-accent-teal)'
+          borderTopColor: 'var(--color-accent-blue)',
+          filter: 'drop-shadow(0 0 8px rgba(66, 133, 244, 0.3))'
         }}
       ></div>
     </div>
