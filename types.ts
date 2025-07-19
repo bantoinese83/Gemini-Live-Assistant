@@ -14,6 +14,7 @@ export interface GeminiLiveAICallbacks {
   onUserTranscriptUpdate?: (transcript: string, isFinal: boolean) => void;
   onModelTranscriptUpdate?: (transcript: string, isFinal: boolean) => void;
   onMediaStreamAvailable: (stream: MediaStream | null) => void;
+  onScreenSharingStateChange?: (isScreenSharing: boolean) => void;
 }
 
 // Return type for the useGeminiLive hook
@@ -36,6 +37,9 @@ export interface UseGeminiLiveReturn {
   modelTranscript: string;
   modelTranscriptIsFinal: boolean;
   setVideoTrackEnabled?: (enable: boolean) => void;
+  isScreenSharing: boolean;
+  startScreenSharing: () => Promise<void>;
+  stopScreenSharing: () => void;
 }
 
 // Props for generic Icon components

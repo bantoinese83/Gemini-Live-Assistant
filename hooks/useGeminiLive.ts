@@ -35,6 +35,9 @@ const useGeminiLive = (systemInstruction: string = DEFAULT_SYSTEM_INSTRUCTION): 
   const [modelTranscript, setModelTranscript] = useState('');
   const [modelTranscriptIsFinal, setModelTranscriptIsFinal] = useState(false);
 
+  // Screen sharing state
+  const [isScreenSharing, setIsScreenSharing] = useState(false);
+
   // Refs for managing throttled transcript updates to optimize re-renders.
   // These store the latest interim transcript received before the throttle timeout.
   const latestInterimUserTranscriptRef = useRef<string>('');
@@ -178,6 +181,12 @@ const useGeminiLive = (systemInstruction: string = DEFAULT_SYSTEM_INSTRUCTION): 
         }
         setMediaStream(stream);
       },
+      onScreenSharingStateChange: (isScreenSharing) => {
+        if (!isMountedRef.current) {
+          return;
+        }
+        setIsScreenSharing(isScreenSharing);
+      },
     };
 
     let instance: GeminiLiveAI | null = null;
@@ -299,6 +308,32 @@ const useGeminiLive = (systemInstruction: string = DEFAULT_SYSTEM_INSTRUCTION): 
     geminiInstanceRef.current?.setVideoTrackEnabled(enable);
   }, []); // No dependencies as it always uses the current ref instance
 
+  /**
+   * Starts screen sharing and begins capturing screen frames to send to Gemini.
+   */
+  const startScreenSharing = useCallback(async () => {
+    const currentAIInstance = geminiInstanceRef.current;
+    if (currentAIInstance && !isScreenSharing) {
+      try {
+        await currentAIInstance.startScreenSharing();
+      } catch (error) {
+        console.error('Failed to start screen sharing:', error);
+        if (isMountedRef.current) {
+          setErrorMessage(`Screen sharing failed: ${(error as Error).message}`);
+        }
+      }
+    }
+  }, [isScreenSharing]);
+
+  /**
+   * Stops screen sharing and cleans up associated resources.
+   */
+  const stopScreenSharing = useCallback(() => {
+    if (isScreenSharing) {
+      geminiInstanceRef.current?.stopScreenSharing();
+    }
+  }, [isScreenSharing]);
+
   return {
     isInitialized,
     isRecording,
@@ -318,6 +353,9 @@ const useGeminiLive = (systemInstruction: string = DEFAULT_SYSTEM_INSTRUCTION): 
     modelTranscript,
     modelTranscriptIsFinal,
     setVideoTrackEnabled,
+    isScreenSharing,
+    startScreenSharing,
+    stopScreenSharing,
   };
 };
 

@@ -72,6 +72,9 @@ const App: React.FC = () => {
     modelTranscriptIsFinal,
     setVideoTrackEnabled,
     inputAudioContext,
+    isScreenSharing,
+    startScreenSharing,
+    stopScreenSharing,
   } = useGeminiLive(systemInstruction); // Pass current system instruction to the hook
 
   // State to track if the AI is currently speaking, used for the AIBotVisualizer
@@ -974,6 +977,9 @@ const App: React.FC = () => {
         onShowHistory={() => setShowHistory(true)}
         onToggleDashboard={() => setShowDashboard(d => !d)}
         showDashboard={showDashboard}
+        isScreenSharing={isScreenSharing}
+        onStartScreenSharing={startScreenSharing}
+        onStopScreenSharing={stopScreenSharing}
       />
       <main className="flex flex-1 min-h-0 overflow-auto">
         <div className="flex flex-1 flex-col lg:flex-row w-full">

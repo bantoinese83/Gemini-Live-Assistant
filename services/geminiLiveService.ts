@@ -38,9 +38,18 @@ export class GeminiLiveAI {
   private canvasElement: HTMLCanvasElement | null = null; // Canvas for capturing frames from videoElement
   private videoFrameCaptureIntervalId: number | null = null; // Interval ID for video frame capture
 
+  // Screen sharing
+  private screenStream: MediaStream | null = null; // Screen sharing stream
+  private screenVideoElement: HTMLVideoElement | null = null; // Hidden video element for screen frames
+  private screenCanvasElement: HTMLCanvasElement | null = null; // Canvas for capturing screen frames
+  private screenFrameCaptureIntervalId: number | null = null; // Interval ID for screen frame capture
+  private isScreenSharing = false; // Track screen sharing state
+
   // Constants
   private static readonly VIDEO_FRAME_RATE = 1; // 1 FPS for video frame capture
+  private static readonly SCREEN_FRAME_RATE = 0.5; // 0.5 FPS for screen frame capture (lower to reduce bandwidth)
   private static readonly VIDEO_QUALITY = 0.8; // JPEG quality for video frames
+  private static readonly SCREEN_QUALITY = 0.7; // JPEG quality for screen frames (slightly lower for bandwidth)
 
   /**
    * Initializes the GeminiLiveAI service.
@@ -173,6 +182,8 @@ export class GeminiLiveAI {
       speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Orus' } } }, // Example voice
       inputAudioTranscription: {}, // Enable transcription of user's audio
       outputAudioTranscription: {}, // Enable transcription of AI's audio output
+      // Enable screen sharing support
+      inputModalities: [Modality.AUDIO, Modality.IMAGE], // Support both audio and image input
       // Conditionally add system instruction if provided
       ...(this.systemInstruction && this.systemInstruction.trim() !== '' && {
         systemInstruction: { parts: [{ text: this.systemInstruction }] }
@@ -604,6 +615,174 @@ export class GeminiLiveAI {
   }
 
   /**
+   * Starts screen sharing and begins capturing screen frames to send to Gemini.
+   */
+  public async startScreenSharing(): Promise<void> {
+    if (this.isDisposed || !this.session) {
+      throw new Error('Cannot start screen sharing: service disposed or no active session');
+    }
+
+    try {
+      // Request screen sharing with audio
+      this.screenStream = await navigator.mediaDevices.getDisplayMedia({
+        video: {
+          mediaSource: 'screen',
+          width: { ideal: 1920 },
+          height: { ideal: 1080 },
+          frameRate: { ideal: 30 }
+        },
+        audio: false // We'll use microphone audio separately
+      });
+
+      this.isScreenSharing = true;
+      this.callbacks.onStatusUpdate('Screen sharing started');
+      this.callbacks.onScreenSharingStateChange?.(true);
+
+      // Set up screen frame capture
+      this.setupScreenFrameCapture();
+
+      // Handle screen sharing stop
+      this.screenStream.getVideoTracks()[0].addEventListener('ended', () => {
+        this.stopScreenSharing();
+      });
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown screen sharing error';
+      console.error('Failed to start screen sharing:', error);
+      this.callbacks.onErrorUpdate(`Screen sharing failed: ${errorMessage}`);
+      throw error;
+    }
+  }
+
+  /**
+   * Stops screen sharing and cleans up associated resources.
+   */
+  public stopScreenSharing(): void {
+    if (!this.isScreenSharing) {
+      return;
+    }
+
+    this.isScreenSharing = false;
+    this.stopScreenFrameCapture();
+    this.cleanupScreenSharingResources();
+
+    if (!this.isDisposed) {
+      this.callbacks.onStatusUpdate('Screen sharing stopped');
+      this.callbacks.onScreenSharingStateChange?.(false);
+    }
+  }
+
+  /**
+   * Sets up screen frame capture for sending to Gemini.
+   */
+  private setupScreenFrameCapture(): void {
+    if (!this.screenStream) {
+      return;
+    }
+
+    // Create hidden video element for screen stream
+    this.screenVideoElement = document.createElement('video');
+    this.screenVideoElement.srcObject = this.screenStream;
+    this.screenVideoElement.muted = true;
+    this.screenVideoElement.playsInline = true;
+    this.screenVideoElement.style.display = 'none';
+    document.body.appendChild(this.screenVideoElement);
+
+    // Create canvas for capturing frames
+    this.screenCanvasElement = document.createElement('canvas');
+    this.screenCanvasElement.width = 1280; // Reasonable size for AI processing
+    this.screenCanvasElement.height = 720;
+    const ctx = this.screenCanvasElement.getContext('2d');
+    if (!ctx) {
+      throw new Error('Failed to get canvas context for screen capture');
+    }
+
+    // Start playing the video
+    this.screenVideoElement.play().then(() => {
+      // Start capturing frames
+      this.screenFrameCaptureIntervalId = window.setInterval(() => {
+        this.captureScreenFrame(ctx);
+      }, 1000 / GeminiLiveAI.SCREEN_FRAME_RATE);
+    }).catch(error => {
+      console.error('Failed to start screen video playback:', error);
+      this.callbacks.onErrorUpdate('Failed to start screen capture');
+    });
+  }
+
+  /**
+   * Captures a single frame from the screen and sends it to Gemini.
+   */
+  private async captureScreenFrame(ctx: CanvasRenderingContext2D): Promise<void> {
+    if (!this.screenVideoElement || !this.screenCanvasElement || !this.session || this.isDisposed) {
+      return;
+    }
+
+    try {
+      // Draw the current video frame to canvas
+      ctx.drawImage(this.screenVideoElement, 0, 0, this.screenCanvasElement.width, this.screenCanvasElement.height);
+
+      // Convert canvas to blob
+      const blob = await new Promise<Blob>((resolve, reject) => {
+        this.screenCanvasElement!.toBlob(
+          (blob) => blob ? resolve(blob) : reject(new Error('Failed to create blob from canvas')),
+          'image/jpeg',
+          GeminiLiveAI.SCREEN_QUALITY
+        );
+      });
+
+      // Send screen frame to Gemini
+      await this.session.sendRealtimeInput({ media: blob });
+
+    } catch (error) {
+      if (this.isDisposed) {
+        return;
+      }
+      console.error('Error capturing screen frame:', error);
+      this.callbacks.onErrorUpdate(`Screen capture error: ${(error as Error).message}`);
+    }
+  }
+
+  /**
+   * Stops screen frame capture.
+   */
+  private stopScreenFrameCapture(): void {
+    if (this.screenFrameCaptureIntervalId) {
+      window.clearInterval(this.screenFrameCaptureIntervalId);
+      this.screenFrameCaptureIntervalId = null;
+    }
+  }
+
+  /**
+   * Cleans up screen sharing resources.
+   */
+  private cleanupScreenSharingResources(): void {
+    if (this.screenStream) {
+      this.screenStream.getTracks().forEach(track => track.stop());
+      this.screenStream = null;
+    }
+
+    if (this.screenVideoElement) {
+      if (!this.screenVideoElement.paused) {
+        this.screenVideoElement.pause();
+      }
+      this.screenVideoElement.srcObject = null;
+      if (this.screenVideoElement.parentNode) {
+        this.screenVideoElement.parentNode.removeChild(this.screenVideoElement);
+      }
+      this.screenVideoElement = null;
+    }
+
+    this.screenCanvasElement = null;
+  }
+
+  /**
+   * Gets the current screen sharing state.
+   */
+  public getScreenSharingState(): boolean {
+    return this.isScreenSharing;
+  }
+
+  /**
    * Stops audio and video recording and cleans up all associated resources.
    * Notifies UI about the recording state change.
    */
@@ -619,6 +798,7 @@ export class GeminiLiveAI {
     }
 
     this.stopVideoFrameCapture(); // Stop video capture first
+    this.stopScreenFrameCapture(); // Stop screen capture if active
     this.cleanupAudioRecordingResources(); // Then audio resources
     this.cleanupMediaStream(); // Finally, the media stream itself
 
@@ -659,6 +839,7 @@ export class GeminiLiveAI {
   private cleanupRecordingResources(): void {
     this.cleanupAudioRecordingResources();
     this.cleanupVideoFrameCaptureResources();
+    this.cleanupScreenSharingResources();
     this.cleanupMediaStream();
   }
 
@@ -749,6 +930,7 @@ export class GeminiLiveAI {
     this.callbacks.onStatusUpdate('Disposing GeminiLiveAI instance...');
 
     this.stopRecording(); // This handles recording-specific resources
+    this.stopScreenSharing(); // Stop screen sharing if active
     this.stopAllPlayingAudio(); // Stop AI voice output
 
     if (this.session) {
