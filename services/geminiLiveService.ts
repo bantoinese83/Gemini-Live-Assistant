@@ -258,6 +258,16 @@ export class GeminiLiveAI {
     if (this.isDisposed) {
       return;
     }
+    
+    console.log('GeminiLiveAI: Received message from server:', {
+      hasServerContent: !!message.serverContent,
+      hasModelTurn: !!message.serverContent?.modelTurn,
+      hasAudioPart: !!message.serverContent?.modelTurn?.parts?.find(part => part.inlineData?.data),
+      hasInputTranscription: !!message.serverContent?.inputTranscription,
+      hasOutputTranscription: !!message.serverContent?.outputTranscription,
+      isTurnComplete: !!message.serverContent?.turnComplete
+    });
+    
     const serverContent: LiveServerContent | undefined = message.serverContent;
     const isTurnComplete = !!serverContent?.turnComplete;
 
@@ -558,9 +568,14 @@ export class GeminiLiveAI {
             throw new Error("Invalid video frame data URL format.");
           }
           const base64Data = resultString.split(',')[1];
-          // Send video frame data to the session
+          // Send video frame data to the session using the same format as official console
           if (this.session) {
-            this.session.sendRealtimeInput({ video: { data: base64Data, mimeType: 'image/jpeg' } });
+            this.session.sendRealtimeInput({ 
+              media: { 
+                mimeType: 'image/jpeg', 
+                data: base64Data 
+              } 
+            });
           }
         } catch (e) { this.handleVideoProcessingError("Error processing video frame from FileReader", e); }
       };
@@ -680,7 +695,7 @@ export class GeminiLiveAI {
       return;
     }
 
-    // Create hidden video element for screen stream
+    // Create hidden video element for screen stream (following official console pattern)
     this.screenVideoElement = document.createElement('video');
     this.screenVideoElement.srcObject = this.screenStream;
     this.screenVideoElement.muted = true;
@@ -688,18 +703,19 @@ export class GeminiLiveAI {
     this.screenVideoElement.style.display = 'none';
     document.body.appendChild(this.screenVideoElement);
 
-    // Create canvas for capturing frames
+    // Create canvas for capturing frames (following official console pattern)
     this.screenCanvasElement = document.createElement('canvas');
-    this.screenCanvasElement.width = 1280; // Reasonable size for AI processing
-    this.screenCanvasElement.height = 720;
+    // Use smaller size like official console for better performance
+    this.screenCanvasElement.width = 640; // 25% of typical screen width
+    this.screenCanvasElement.height = 360; // 25% of typical screen height
     const ctx = this.screenCanvasElement.getContext('2d');
     if (!ctx) {
       throw new Error('Failed to get canvas context for screen capture');
     }
 
-    // Start playing the video
+    // Start playing the video and capture frames
     this.screenVideoElement.play().then(() => {
-      // Start capturing frames
+      // Start capturing frames at 0.5 FPS like official console
       this.screenFrameCaptureIntervalId = window.setInterval(() => {
         this.captureScreenFrame(ctx);
       }, 1000 / GeminiLiveAI.SCREEN_FRAME_RATE);
@@ -718,20 +734,25 @@ export class GeminiLiveAI {
     }
 
     try {
-      // Draw the current video frame to canvas
+      // Draw the current video frame to canvas (following official console pattern)
       ctx.drawImage(this.screenVideoElement, 0, 0, this.screenCanvasElement.width, this.screenCanvasElement.height);
+      
+      // Only send if canvas has valid dimensions
+      if (this.screenCanvasElement.width + this.screenCanvasElement.height > 0) {
+        // Convert canvas to base64 JPEG (following official console pattern)
+        const base64 = this.screenCanvasElement.toDataURL('image/jpeg', GeminiLiveAI.SCREEN_QUALITY);
+        const data = base64.slice(base64.indexOf(',') + 1); // Remove data URL prefix
 
-      // Convert canvas to blob
-      const blob = await new Promise<Blob>((resolve, reject) => {
-        this.screenCanvasElement!.toBlob(
-          (blob) => blob ? resolve(blob) : reject(new Error('Failed to create blob from canvas')),
-          'image/jpeg',
-          GeminiLiveAI.SCREEN_QUALITY
-        );
-      });
-
-      // Send screen frame to Gemini
-      await this.session.sendRealtimeInput({ media: blob });
+        // Send screen frame to Gemini using the same format as official console
+        if (this.session) {
+          this.session.sendRealtimeInput({ 
+            media: { 
+              mimeType: 'image/jpeg', 
+              data: data 
+            } 
+          });
+        }
+      }
 
     } catch (error) {
       if (this.isDisposed) {
@@ -917,6 +938,8 @@ export class GeminiLiveAI {
       } // Attempt connection after delay
     }, actualDelay);
   }
+
+
 
   /** Gets the input gain node for microphone volume control. */
   public getInputNode(): GainNode { return this._inputNode; }

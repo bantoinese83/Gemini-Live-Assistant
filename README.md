@@ -1,6 +1,6 @@
 # Gemini Live Assistant
 
-An advanced AI-powered voice and video live assistant using Google's Gemini Live API, featuring real-time conversation, video interaction, session management, and comprehensive analytics. This project demonstrates a modern, full-stack approach to streaming AI audio/video with sophisticated persona management and data persistence.
+An advanced AI-powered voice, video, and screen sharing live assistant using Google's Gemini Live API, featuring real-time conversation, multimodal interaction, session management, and comprehensive analytics. This project demonstrates a modern, full-stack approach to streaming AI audio/video/screen with sophisticated persona management and data persistence.
 
 ---
 
@@ -8,11 +8,21 @@ An advanced AI-powered voice and video live assistant using Google's Gemini Live
 
 ### 🎤 **Core Functionality**
 - **Real-time voice and video streaming** to Gemini Live API
+- **Screen sharing with live preview** and frame capture
 - **Live AI-generated audio and transcript responses** with interim/final states
 - **13 AI Personas** with specialized system instructions and behaviors
 - **Adjustable input/output volume controls** with real-time audio processing
 - **Video preview and AI bot visualizer** with animated responses
 - **System instruction customization** for personalized AI interactions
+- **Multimodal input support** (audio + video + screen sharing simultaneously)
+
+### 🖥️ **Screen Sharing Features**
+- **Real-time screen capture** at 0.5 FPS for optimal performance
+- **Live screen preview** in header with "LIVE" indicator
+- **Seamless integration** with audio and video streams
+- **Automatic screen sharing detection** and cleanup
+- **Optimized frame compression** for bandwidth efficiency
+- **Toggle screen sharing** during active sessions without reconnection
 
 ### 🎭 **AI Personas**
 - **Interview Coach** - Professional interview simulation with STAR method feedback
@@ -30,7 +40,7 @@ An advanced AI-powered voice and video live assistant using Google's Gemini Live
 - **Coding Buddy** - Programming help, debugging, and pair programming
 
 ### 💾 **Session Management**
-- **Session recording and playback** with video/audio storage
+- **Session recording and playback** with video/audio/screen storage
 - **Session history drawer** with thumbnail previews and metadata
 - **Save/discard prompts** with automatic cleanup for unsaved sessions
 - **Session analytics** with detailed metrics and insights
@@ -52,6 +62,7 @@ An advanced AI-powered voice and video live assistant using Google's Gemini Live
 - **Loading states and error handling** with user-friendly feedback
 - **Toast notifications** for user actions and system events
 - **Responsive layout** optimized for desktop and mobile devices
+- **Screen sharing controls** with intuitive toggle buttons
 
 ---
 
@@ -59,7 +70,7 @@ An advanced AI-powered voice and video live assistant using Google's Gemini Live
 
 ```mermaid
 flowchart TD
-  User["👤 User (Mic/Camera)"]
+  User["👤 User (Mic/Camera/Screen)"]
   UI["🎨 React UI Components"]
   useGeminiLive["🔧 useGeminiLive Hook"]
   GeminiLiveAI["🤖 GeminiLiveAI Service"]
@@ -96,6 +107,7 @@ flowchart TD
   subgraph "Real-time Features"
     AudioProcessing["Audio Processing"]
     VideoProcessing["Video Processing"]
+    ScreenCapture["Screen Capture"]
     Transcripts["Live Transcripts"]
   end
 ```
@@ -168,11 +180,13 @@ Gemini-Live-Assistant/
 │   ├── 📄 SavePromptModal.tsx    # Save/discard session prompt
 │   ├── 📄 SystemInstructionInput.tsx # System instruction editor
 │   ├── 📄 ApiKeyIndicator.tsx    # API key status indicator
-│   ├── 📄 Header.tsx             # Application header
+│   ├── 📄 Header.tsx             # Application header with screen sharing
 │   ├── 📄 Footer.tsx             # Application footer
 │   ├── 📄 LoadingSpinner.tsx     # Loading indicator
 │   ├── 📄 SuccessOverlay.tsx     # Success feedback overlay
 │   ├── 📄 GooeySvgToggle.tsx     # Animated toggle component
+│   ├── 📄 ScreenShareButton.tsx  # Screen sharing toggle button
+│   ├── 📄 ScreenSharePreview.tsx # Live screen sharing preview
 │   └── 🗂️ common/               # Shared components
 │       ├── 📄 Button.tsx         # Reusable button component
 │       ├── 📄 ActivityRing.tsx   # Activity ring visualization
@@ -203,27 +217,38 @@ Gemini-Live-Assistant/
 - Manages AI persona selection and system instructions
 - Integrates with Supabase for data persistence
 - Provides error handling and user feedback
+- Coordinates screen sharing state and preview
 
 ### **useGeminiLive Hook**
 - Manages Gemini Live API session state
-- Handles real-time audio/video streaming
+- Handles real-time audio/video/screen streaming
 - Provides transcript management with throttling
 - Exposes control functions for recording and playback
 - Manages audio contexts and gain nodes for volume control
+- Handles screen sharing state and stream management
 
 ### **GeminiLiveAI Service**
 - Core service for Gemini Live API integration
 - Handles WebSocket connections and data streaming
-- Manages audio/video capture and encoding
+- Manages audio/video/screen capture and encoding
 - Processes AI responses and transcript updates
 - Provides session lifecycle management
+- Implements official Gemini Live API patterns for screen sharing
+
+### **Screen Sharing System**
+- **Real-time Screen Capture**: 0.5 FPS frame capture for optimal performance
+- **Canvas-based Processing**: Efficient frame processing using HTML5 Canvas
+- **Base64 Encoding**: Optimized data format matching official Gemini console
+- **Live Preview**: Real-time screen preview in application header
+- **Automatic Cleanup**: Proper resource management and cleanup
+- **Seamless Integration**: Works alongside audio and video streams
 
 ### **Session Management**
 - **Session Creation**: Automatic session creation when recording starts
 - **Session Saving**: User prompts to save or discard sessions
 - **Session Cleanup**: Automatic deletion of unsaved sessions
 - **Session History**: Comprehensive session browser with metadata
-- **Session Playback**: Full session replay with video/audio
+- **Session Playback**: Full session replay with video/audio/screen
 
 ### **Analytics System**
 - **Real-time Metrics**: Session duration, frequency, and engagement
@@ -278,6 +303,7 @@ Each persona includes:
 - **@google/genai** - Official Google Gemini API SDK
 - **Gemini Live API** - Real-time streaming AI conversations
 - **WebSocket** - Real-time bidirectional communication
+- **Multimodal Support** - Audio, video, and image input modalities
 
 ### **Backend & Storage**
 - **Supabase** - Database and cloud storage
@@ -314,11 +340,17 @@ The project uses the latest Tailwind CSS v4 with the new Vite plugin:
 - **Custom theme** - Extended color palette and animations
 - **CSS variables** - Dynamic theming support
 
-### **Audio/Video Settings**
+### **Audio/Video/Screen Settings**
 ```typescript
 // Video capture settings
-VIDEO_FRAME_RATE = 10; // Frames per second
-VIDEO_QUALITY = 0.7;   // JPEG quality (0.0 to 1.0)
+VIDEO_FRAME_RATE = 1;    // Frames per second
+VIDEO_QUALITY = 0.8;     // JPEG quality (0.0 to 1.0)
+
+// Screen capture settings
+SCREEN_FRAME_RATE = 0.5; // Frames per second (optimized for performance)
+SCREEN_QUALITY = 0.7;    // JPEG quality (0.0 to 1.0)
+SCREEN_WIDTH = 640;      // Canvas width (25% of typical screen)
+SCREEN_HEIGHT = 360;     // Canvas height (25% of typical screen)
 
 // Audio processing
 AI_BOT_ANALYSER_FFT_SIZE = 256;
@@ -364,6 +396,7 @@ We welcome contributions! Here's how to get started:
 - Add tests for new features
 - Update documentation as needed
 - Ensure accessibility compliance
+- Follow official Gemini Live API patterns
 
 ---
 
@@ -375,7 +408,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 🙏 Acknowledgments
 
-- **Google Gemini Team** - For the amazing Gemini Live API
+- **Google Gemini Team** - For the amazing Gemini Live API and official console patterns
 - **Supabase Team** - For the excellent backend-as-a-service platform
 - **Tailwind CSS Team** - For the incredible CSS framework
 - **React Team** - For the powerful UI library
