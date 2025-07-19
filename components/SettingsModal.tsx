@@ -13,56 +13,66 @@ import {
   AlertCircle
 } from 'lucide-react';
 
-// Available voices for Gemini Live API
+// Available voices for Gemini Live API (Half-cascade models)
+// Source: https://ai.google.dev/gemini-api/docs/live-api/capabilities#change-voice-and-language
 export const AVAILABLE_VOICES = [
-  { id: 'Orus', name: 'Orus', description: 'Professional male voice', gender: 'male', language: 'en-US' },
-  { id: 'Nova', name: 'Nova', description: 'Friendly female voice', gender: 'female', language: 'en-US' },
-  { id: 'Echo', name: 'Echo', description: 'Clear male voice', gender: 'male', language: 'en-US' },
-  { id: 'Luna', name: 'Luna', description: 'Warm female voice', gender: 'female', language: 'en-US' },
-  { id: 'Atlas', name: 'Atlas', description: 'Deep male voice', gender: 'male', language: 'en-US' },
-  { id: 'Stella', name: 'Stella', description: 'Bright female voice', gender: 'female', language: 'en-US' },
+  { id: 'Puck', name: 'Puck', description: 'Clear and professional male voice', gender: 'male', language: 'en-US' },
+  { id: 'Charon', name: 'Charon', description: 'Deep and authoritative male voice', gender: 'male', language: 'en-US' },
+  { id: 'Kore', name: 'Kore', description: 'Warm and friendly female voice', gender: 'female', language: 'en-US' },
+  { id: 'Fenrir', name: 'Fenrir', description: 'Strong and confident male voice', gender: 'male', language: 'en-US' },
+  { id: 'Aoede', name: 'Aoede', description: 'Melodic and expressive female voice', gender: 'female', language: 'en-US' },
+  { id: 'Leda', name: 'Leda', description: 'Gentle and caring female voice', gender: 'female', language: 'en-US' },
+  { id: 'Orus', name: 'Orus', description: 'Professional and articulate male voice', gender: 'male', language: 'en-US' },
+  { id: 'Zephyr', name: 'Zephyr', description: 'Smooth and engaging male voice', gender: 'male', language: 'en-US' },
 ];
 
 // Available languages for Gemini Live API
+// Source: https://ai.google.dev/gemini-api/docs/live-api/capabilities#change-voice-and-language
+// Note: Native audio models automatically choose language and don't support explicit language setting
 export const AVAILABLE_LANGUAGES = [
-  { code: 'en-US', name: 'English (US)', flag: '🇺🇸', description: 'American English' },
+  { code: 'de-DE', name: 'German (Germany)', flag: '🇩🇪', description: 'German' },
+  { code: 'en-AU', name: 'English (Australia)', flag: '🇦🇺', description: 'Australian English' },
   { code: 'en-GB', name: 'English (UK)', flag: '🇬🇧', description: 'British English' },
-  { code: 'es-ES', name: 'Spanish', flag: '🇪🇸', description: 'Spanish (Spain)' },
-  { code: 'es-MX', name: 'Spanish (Mexico)', flag: '🇲🇽', description: 'Spanish (Mexico)' },
-  { code: 'fr-FR', name: 'French', flag: '🇫🇷', description: 'French' },
-  { code: 'de-DE', name: 'German', flag: '🇩🇪', description: 'German' },
-  { code: 'it-IT', name: 'Italian', flag: '🇮🇹', description: 'Italian' },
-  { code: 'pt-BR', name: 'Portuguese (Brazil)', flag: '🇧🇷', description: 'Portuguese (Brazil)' },
-  { code: 'pt-PT', name: 'Portuguese (Portugal)', flag: '🇵🇹', description: 'Portuguese (Portugal)' },
-  { code: 'ja-JP', name: 'Japanese', flag: '🇯🇵', description: 'Japanese' },
-  { code: 'ko-KR', name: 'Korean', flag: '🇰🇷', description: 'Korean' },
-  { code: 'zh-CN', name: 'Chinese (Simplified)', flag: '🇨🇳', description: 'Chinese (Simplified)' },
-  { code: 'zh-TW', name: 'Chinese (Traditional)', flag: '🇹🇼', description: 'Chinese (Traditional)' },
-  { code: 'ru-RU', name: 'Russian', flag: '🇷🇺', description: 'Russian' },
-  { code: 'ar-SA', name: 'Arabic', flag: '🇸🇦', description: 'Arabic' },
-  { code: 'hi-IN', name: 'Hindi', flag: '🇮🇳', description: 'Hindi' },
-  { code: 'nl-NL', name: 'Dutch', flag: '🇳🇱', description: 'Dutch' },
-  { code: 'sv-SE', name: 'Swedish', flag: '🇸🇪', description: 'Swedish' },
-  { code: 'da-DK', name: 'Danish', flag: '🇩🇰', description: 'Danish' },
-  { code: 'no-NO', name: 'Norwegian', flag: '🇳🇴', description: 'Norwegian' },
-  { code: 'fi-FI', name: 'Finnish', flag: '🇫🇮', description: 'Finnish' },
-  { code: 'pl-PL', name: 'Polish', flag: '🇵🇱', description: 'Polish' },
-  { code: 'tr-TR', name: 'Turkish', flag: '🇹🇷', description: 'Turkish' },
-  { code: 'he-IL', name: 'Hebrew', flag: '🇮🇱', description: 'Hebrew' },
-  { code: 'th-TH', name: 'Thai', flag: '🇹🇭', description: 'Thai' },
-  { code: 'vi-VN', name: 'Vietnamese', flag: '🇻🇳', description: 'Vietnamese' },
-  { code: 'id-ID', name: 'Indonesian', flag: '🇮🇩', description: 'Indonesian' },
-  { code: 'ms-MY', name: 'Malay', flag: '🇲🇾', description: 'Malay' },
-  { code: 'fil-PH', name: 'Filipino', flag: '🇵🇭', description: 'Filipino' },
+  { code: 'en-IN', name: 'English (India)', flag: '🇮🇳', description: 'Indian English' },
+  { code: 'en-US', name: 'English (US)', flag: '🇺🇸', description: 'American English' },
+  { code: 'es-US', name: 'Spanish (US)', flag: '🇺🇸', description: 'US Spanish' },
+  { code: 'fr-FR', name: 'French (France)', flag: '🇫🇷', description: 'French' },
+  { code: 'hi-IN', name: 'Hindi (India)', flag: '🇮🇳', description: 'Hindi' },
+  { code: 'pt-BR', name: 'Portuguese (Brazil)', flag: '🇧🇷', description: 'Brazilian Portuguese' },
+  { code: 'ar-XA', name: 'Arabic (Generic)', flag: '🇸🇦', description: 'Arabic' },
+  { code: 'es-ES', name: 'Spanish (Spain)', flag: '🇪🇸', description: 'Spanish' },
+  { code: 'fr-CA', name: 'French (Canada)', flag: '🇨🇦', description: 'Canadian French' },
+  { code: 'id-ID', name: 'Indonesian (Indonesia)', flag: '🇮🇩', description: 'Indonesian' },
+  { code: 'it-IT', name: 'Italian (Italy)', flag: '🇮🇹', description: 'Italian' },
+  { code: 'ja-JP', name: 'Japanese (Japan)', flag: '🇯🇵', description: 'Japanese' },
+  { code: 'tr-TR', name: 'Turkish (Turkey)', flag: '🇹🇷', description: 'Turkish' },
+  { code: 'vi-VN', name: 'Vietnamese (Vietnam)', flag: '🇻🇳', description: 'Vietnamese' },
+  { code: 'bn-IN', name: 'Bengali (India)', flag: '🇮🇳', description: 'Bengali' },
+  { code: 'gu-IN', name: 'Gujarati (India)', flag: '🇮🇳', description: 'Gujarati' },
+  { code: 'kn-IN', name: 'Kannada (India)', flag: '🇮🇳', description: 'Kannada' },
+  { code: 'mr-IN', name: 'Marathi (India)', flag: '🇮🇳', description: 'Marathi' },
+  { code: 'ml-IN', name: 'Malayalam (India)', flag: '🇮🇳', description: 'Malayalam' },
+  { code: 'ta-IN', name: 'Tamil (India)', flag: '🇮🇳', description: 'Tamil' },
+  { code: 'te-IN', name: 'Telugu (India)', flag: '🇮🇳', description: 'Telugu' },
+  { code: 'nl-NL', name: 'Dutch (Netherlands)', flag: '🇳🇱', description: 'Dutch' },
+  { code: 'ko-KR', name: 'Korean (South Korea)', flag: '🇰🇷', description: 'Korean' },
+  { code: 'cmn-CN', name: 'Mandarin Chinese (China)', flag: '🇨🇳', description: 'Mandarin Chinese' },
+  { code: 'pl-PL', name: 'Polish (Poland)', flag: '🇵🇱', description: 'Polish' },
+  { code: 'ru-RU', name: 'Russian (Russia)', flag: '🇷🇺', description: 'Russian' },
+  { code: 'th-TH', name: 'Thai (Thailand)', flag: '🇹🇭', description: 'Thai' },
 ];
 
-// Settings interface
+// Settings interface for Gemini Live API
+// Note: Only voiceName and languageCode are supported by the API
+// Voice parameters like speechRate, pitch, volume are not supported in Live API
 export interface VoiceSettings {
   voiceId: string;
   languageCode: string;
-  speechRate: number; // 0.25 to 4.0
-  pitch: number; // -20.0 to 20.0
-  volume: number; // 0.0 to 1.0
+  // Note: speechRate, pitch, volume are not supported by Gemini Live API
+  // These are kept for UI consistency but not sent to the API
+  speechRate: number; // 0.25 to 4.0 (UI only)
+  pitch: number; // -20.0 to 20.0 (UI only)
+  volume: number; // 0.0 to 1.0 (UI only)
 }
 
 interface SettingsModalProps {
@@ -205,10 +215,13 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
             {/* Language Selection */}
             <div className="space-y-4">
-              <div className="flex items-center gap-2 mb-4">
-                <Globe className="w-5 h-5 text-[var(--color-accent-green)]" />
-                <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">Language</h3>
-              </div>
+                          <div className="flex items-center gap-2 mb-4">
+              <Globe className="w-5 h-5 text-[var(--color-accent-green)]" />
+              <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">Language</h3>
+            </div>
+            <p className="text-sm text-[var(--color-text-secondary)] mb-4">
+              Note: Native audio models automatically choose the appropriate language and don't support explicit language setting.
+            </p>
               
               <div className="max-h-64 overflow-y-auto space-y-2 pr-2">
                 {AVAILABLE_LANGUAGES.map((language) => (
@@ -238,12 +251,18 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           </div>
 
-          {/* Voice Parameters */}
+          {/* Voice Parameters (UI Only) */}
           <div className="mt-8 space-y-6">
-            <h3 className="text-lg font-semibold text-[var(--color-text-primary)] flex items-center gap-2">
+            <div className="flex items-center gap-2">
               <Headphones className="w-5 h-5 text-[var(--color-accent-yellow)]" />
-              Voice Parameters
-            </h3>
+              <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">Voice Parameters</h3>
+              <span className="px-2 py-1 text-xs bg-[var(--color-accent-yellow)]/10 text-[var(--color-accent-yellow)] rounded-full border border-[var(--color-accent-yellow)]/20">
+                UI Only
+              </span>
+            </div>
+            <p className="text-sm text-[var(--color-text-secondary)]">
+              Note: These parameters are for UI display only. The Gemini Live API only supports voice selection and language configuration.
+            </p>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Speech Rate */}

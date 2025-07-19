@@ -185,11 +185,9 @@ export class GeminiLiveAI {
             voiceName: this.voiceSettings?.voiceId || 'Orus' 
           } 
         },
-        // Add voice parameters if available
-        ...(this.voiceSettings && {
-          speechRate: this.voiceSettings.speechRate,
-          pitch: this.voiceSettings.pitch,
-          volume: this.voiceSettings.volume,
+        // Add language code if specified (only for half-cascade models)
+        ...(this.voiceSettings?.languageCode && {
+          languageCode: this.voiceSettings.languageCode
         })
       },
       inputAudioTranscription: {}, // Enable transcription of user's audio
