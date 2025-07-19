@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { GeminiLiveAI } from '../services/geminiLiveService';
 import { DEFAULT_SYSTEM_INSTRUCTION } from '../constants';
-import type { UseGeminiLiveReturn, GeminiLiveAICallbacks } from '../types';
+import type { UseGeminiLiveReturn, GeminiLiveAICallbacks, VoiceSettings } from '../types';
 
 /**
  * Custom React hook to manage interactions with the GeminiLiveAI service.
@@ -11,7 +11,7 @@ import type { UseGeminiLiveReturn, GeminiLiveAICallbacks } from '../types';
  * @param systemInstruction - Optional system instruction to define the AI's persona. Defaults to `DEFAULT_SYSTEM_INSTRUCTION`.
  * @returns An object implementing `UseGeminiLiveReturn`, containing state variables and control functions.
  */
-const useGeminiLive = (systemInstruction: string = DEFAULT_SYSTEM_INSTRUCTION): UseGeminiLiveReturn => {
+const useGeminiLive = (systemInstruction: string = DEFAULT_SYSTEM_INSTRUCTION, voiceSettings?: VoiceSettings): UseGeminiLiveReturn => {
   const geminiInstanceRef = useRef<GeminiLiveAI | null>(null);
   const isMountedRef = useRef(false); // Tracks component mount status to prevent state updates on unmounted components
 
@@ -203,7 +203,7 @@ const useGeminiLive = (systemInstruction: string = DEFAULT_SYSTEM_INSTRUCTION): 
 
     let instance: GeminiLiveAI | null = null;
     try {
-      instance = new GeminiLiveAI(callbacks, systemInstruction);
+      instance = new GeminiLiveAI(callbacks, systemInstruction, voiceSettings);
       geminiInstanceRef.current = instance; // Store instance in ref
       if (isMountedRef.current) {
         // Set audio contexts and gain nodes from the successfully created instance
@@ -246,7 +246,7 @@ const useGeminiLive = (systemInstruction: string = DEFAULT_SYSTEM_INSTRUCTION): 
         setMediaStream(null);
       }
     };
-  }, [systemInstruction]); // Dependency: re-initialize if systemInstruction changes.
+  }, [systemInstruction, voiceSettings]); // Dependency: re-initialize if systemInstruction changes.
 
   /** Clears all transcript data (user and model, interim and final). */
   const clearTranscripts = useCallback(() => {

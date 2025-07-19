@@ -1,7 +1,7 @@
 import { GoogleGenAI, LiveServerMessage, Modality, Session, LiveServerContent, createPartFromUri, Type } from '@google/genai';
 import { createBlob, decode, decodeAudioData } from '../utils/audioUtils';
 import { MAX_RECONNECT_ATTEMPTS, RECONNECT_DELAY_BASE_MS } from '../constants';
-import type { GeminiLiveAICallbacks, SessionAnalysisResult, SupabaseTranscript } from '../types';
+import type { GeminiLiveAICallbacks, SessionAnalysisResult, SupabaseTranscript, VoiceSettings } from '../types';
 import { supabase } from './supabaseClient';
 
 /**
@@ -57,7 +57,7 @@ export class GeminiLiveAI {
    * @param systemInstruction - Optional system instruction to guide the AI's persona and behavior.
    * @throws Error if API_KEY is not set or AudioContext cannot be created.
    */
-  constructor(callbacks: GeminiLiveAICallbacks, private systemInstruction?: string) {
+  constructor(callbacks: GeminiLiveAICallbacks, private systemInstruction?: string, private voiceSettings?: VoiceSettings) {
     this.callbacks = callbacks;
 
     if (!process.env.API_KEY) {
@@ -179,7 +179,19 @@ export class GeminiLiveAI {
     // Configuration for the Live API session.
     const liveConnectConfig = {
       responseModalities: [Modality.AUDIO], // Expect audio responses from AI
-      speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: 'Orus' } } }, // Example voice
+      speechConfig: { 
+        voiceConfig: { 
+          prebuiltVoiceConfig: { 
+            voiceName: this.voiceSettings?.voiceId || 'Orus' 
+          } 
+        },
+        // Add voice parameters if available
+        ...(this.voiceSettings && {
+          speechRate: this.voiceSettings.speechRate,
+          pitch: this.voiceSettings.pitch,
+          volume: this.voiceSettings.volume,
+        })
+      },
       inputAudioTranscription: {}, // Enable transcription of user's audio
       outputAudioTranscription: {}, // Enable transcription of AI's audio output
       // Enable screen sharing support
