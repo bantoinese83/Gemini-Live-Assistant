@@ -45,11 +45,13 @@
   --focus-ring-offset-color-dark: var(--color-background-primary);
   --focus-ring-offset-color-light: var(--color-background-secondary);
 
-  /* AI Bot Specific Colors */
+  /* AI Bot Specific Colors - Google Logo Color Scheme */
   --bot-face-bg: #202124; /* Google Dark Gray for bot face */
-  --bot-body-color: #4285f4; /* Google Blue for bot body */
-  --bot-accent-primary: var(--color-accent-blue); /* Google Blue for primary bot features */
-  --bot-accent-secondary: var(--color-accent-green); /* Google Green for secondary bot features (eyes) */
+  --bot-body-color: #4285f4; /* Google Blue for main bot body */
+  --bot-accent-primary: var(--color-accent-blue); /* Google Blue for primary features */
+  --bot-accent-secondary: var(--color-accent-green); /* Google Green for secondary features */
+  --bot-accent-red: var(--color-accent-red); /* Google Red for accent elements */
+  --bot-accent-yellow: var(--color-accent-yellow); /* Google Yellow for accent elements */
 }
 
 /* Custom scrollbar */
@@ -169,7 +171,13 @@ body {
   position: relative;
   display: grid;
   place-items: center;
-  box-shadow: 0 4px 32px 0 #4285f455, 0 0 0 4px #4285f455;
+  /* Google colors glow effect - blue base with multicolor accents */
+  box-shadow: 
+    0 4px 32px 0 #4285f455, 
+    0 0 0 4px #4285f455,
+    0 0 0 6px #ea433555, /* Red accent */
+    0 0 0 8px #fbbc0555, /* Yellow accent */
+    0 0 0 10px #34a85355; /* Green accent */
   filter: drop-shadow(0 0 8px #4285f4cc);
 }
  @media (min-width: 640px) { /* sm breakpoint */
@@ -203,12 +211,18 @@ body {
   scale: var(--ealw, 1) 1;
   transition: scale 0.1s ease-out;
 }
+.ai-bot .head:before {
+  background: var(--bot-accent-red); /* Google Red for left ear */
+  filter: drop-shadow(0 0 2px var(--bot-accent-red));
+}
 .ai-bot .head:after {
   right: -4px;
   left: unset;
   border-radius: 0 2px 2px 0;
   scale: var(--earw, 1) 1;
   transition: scale 0.1s ease-out;
+  background: var(--bot-accent-yellow); /* Google Yellow for right ear */
+  filter: drop-shadow(0 0 2px var(--bot-accent-yellow));
 }
 
 .ai-bot .head .face {
@@ -227,13 +241,14 @@ body {
 
 .ai-bot .head .face:before {
   content: '';
-  background: var(--bot-body-color);
+  background: var(--bot-accent-red); /* Google Red for face border */
   position: absolute;
   height: 1px;
   width: 10px;
   top: -2px;
   border-radius: 2px 2px 0 0;
   mask: radial-gradient(circle at 50% 100%, transparent 45%, black 45%);
+  filter: drop-shadow(0 0 1px var(--bot-accent-red));
 }
 
 .ai-bot .head .face .eyes {
@@ -247,24 +262,32 @@ body {
   width: 5px;
   height:  8px;
   scale: 1 var(--elh);
-  filter: drop-shadow( 0 0 2px var(--bot-accent-primary));
-  background: repeating-linear-gradient(to bottom, var(--bot-body-color), var(--bot-body-color) .25px, transparent .25px, transparent .6px), linear-gradient(to bottom, var(--bot-accent-secondary), transparent 60%), var(--bot-accent-primary);
   border-radius: 1px;
   translate: var(--erx) 0;
   transition: scale 0.05s linear, translate 0.1s linear;
+}
+.ai-bot .head .face .eyes:before {
+  filter: drop-shadow( 0 0 2px var(--bot-accent-blue));
+  background: repeating-linear-gradient(to bottom, var(--bot-body-color), var(--bot-body-color) .25px, transparent .25px, transparent .6px), linear-gradient(to bottom, var(--bot-accent-blue), transparent 60%), var(--bot-accent-blue);
+}
+.ai-bot .head .face .eyes:after {
+  filter: drop-shadow( 0 0 2px var(--bot-accent-green));
+  background: repeating-linear-gradient(to bottom, var(--bot-body-color), var(--bot-body-color) .25px, transparent .25px, transparent .6px), linear-gradient(to bottom, var(--bot-accent-green), transparent 60%), var(--bot-accent-green);
 }
 
 .ai-bot .head .face .eyes:after {
   scale: 1 var(--erh);
   translate: var(--erx) 0;
+  filter: drop-shadow( 0 0 2px var(--bot-accent-green));
+  background: repeating-linear-gradient(to bottom, var(--bot-body-color), var(--bot-body-color) .25px, transparent .25px, transparent .6px), linear-gradient(to bottom, var(--bot-accent-green), transparent 60%), var(--bot-accent-green);
 }
 
 .ai-bot .head .face .mouth {
   width: 10px;
   height: 2px;
-  background: var(--bot-accent-primary);
+  background: var(--bot-accent-yellow); /* Google Yellow for mouth */
   border-radius: 0 0 1px 1px;
-  filter: drop-shadow( 0 0 2px var(--bot-accent-primary));
+  filter: drop-shadow( 0 0 2px var(--bot-accent-yellow));
   scale: var(--mw, 1) var(--mh, 1);
   transition: scale 0.05s linear;
 }
