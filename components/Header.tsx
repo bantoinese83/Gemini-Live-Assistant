@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { History, BarChart2, Settings, HelpCircle, Wifi, WifiOff, Clock, Activity } from 'lucide-react';
+import { History, BarChart2, Settings, HelpCircle, Activity } from 'lucide-react';
 import ScreenSharePreview from './ScreenSharePreview';
 
 // Google "G" logo component
@@ -37,6 +37,7 @@ interface HeaderProps {
   isRecording?: boolean;
   sessionStartTime?: Date | null;
   currentPersona?: string;
+  onOpenSettings?: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({ 
@@ -47,31 +48,10 @@ const Header: React.FC<HeaderProps> = ({
   screenStream,
   isRecording = false,
   sessionStartTime,
-  currentPersona = "Friendly Conversationalist"
+  currentPersona = "Friendly Conversationalist",
+  onOpenSettings
 }) => {
-  const [currentTime, setCurrentTime] = useState(new Date());
-  const [connectionStatus, setConnectionStatus] = useState<'online' | 'offline'>('online');
   const [showHelp, setShowHelp] = useState(false);
-
-  // Update current time every second
-  useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
-  }, []);
-
-  // Monitor connection status
-  useEffect(() => {
-    const handleOnline = () => setConnectionStatus('online');
-    const handleOffline = () => setConnectionStatus('offline');
-    
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
 
   // Calculate session duration
   const getSessionDuration = () => {
@@ -102,26 +82,6 @@ const Header: React.FC<HeaderProps> = ({
 
         {/* Status Indicators */}
         <div className="flex items-center gap-4">
-          {/* Connection Status */}
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--color-background-secondary)] border border-[var(--color-border-primary)]">
-            {connectionStatus === 'online' ? (
-              <Wifi size={14} className="text-[var(--color-accent-green)]" />
-            ) : (
-              <WifiOff size={14} className="text-[var(--color-accent-red)]" />
-            )}
-            <span className="text-xs font-medium text-[var(--color-text-secondary)]">
-              {connectionStatus}
-            </span>
-          </div>
-
-          {/* Current Time */}
-          <div className="hidden sm:flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--color-background-secondary)] border border-[var(--color-border-primary)]">
-            <Clock size={14} className="text-[var(--color-accent-blue)]" />
-            <span className="text-xs font-medium text-[var(--color-text-secondary)]">
-              {currentTime.toLocaleTimeString()}
-            </span>
-          </div>
-
           {/* Screen Share Preview */}
           <ScreenSharePreview
             screenStream={screenStream}
@@ -192,6 +152,7 @@ const Header: React.FC<HeaderProps> = ({
             Help
           </button>
           <button
+            onClick={onOpenSettings}
             className="flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--color-background-tertiary)] hover:bg-[var(--color-border-primary)] transition-colors duration-200 text-xs font-medium text-[var(--color-text-secondary)]"
             title="Settings"
           >

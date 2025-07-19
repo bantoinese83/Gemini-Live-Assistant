@@ -38,6 +38,8 @@ import Header from './components/Header';
 import Footer from './components/Footer';
 import SessionTimer from './components/SessionTimer';
 import SessionDownloader from './components/SessionDownloader';
+import SettingsModal from './components/SettingsModal';
+import type { VoiceSettings } from './types';
 
 /**
  * The main application component.
@@ -50,6 +52,16 @@ const App: React.FC = () => {
     const initialPersona = AI_PERSONA_PRESETS[0];
     return initialPersona.systemInstruction;
   });
+  
+  // Voice settings state
+  const [voiceSettings, setVoiceSettings] = useState<VoiceSettings>({
+    voiceId: 'Orus',
+    languageCode: 'en-US',
+    speechRate: 1.0,
+    pitch: 0,
+    volume: 1.0,
+  });
+  
   const [localIsVideoEnabled, setLocalIsVideoEnabled] = useState<boolean>(true);
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
 
@@ -76,7 +88,7 @@ const App: React.FC = () => {
     screenStream,
     startScreenSharing,
     stopScreenSharing,
-  } = useGeminiLive(systemInstruction); // Pass current system instruction to the hook
+  } = useGeminiLive(systemInstruction, voiceSettings); // Pass current system instruction and voice settings to the hook
 
   // State to track if the AI is currently speaking, used for the AIBotVisualizer
   const [isAiSpeaking, setIsAiSpeaking] = useState(false);
@@ -153,11 +165,20 @@ const App: React.FC = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   // Local status override for forcing 'Ready' after save/discard
   const [statusOverride, setStatusOverride] = useState<string | null>(null);
+  
+  // Settings modal state
+  const [showSettings, setShowSettings] = useState(false);
 
   // Helper to get persona name
   const getPersonaName = () => {
     const persona = AI_PERSONA_PRESETS.find(p => p.id === selectedPersonaId);
     return persona ? persona.name : 'Unknown';
+  };
+
+  // Settings handlers
+  const handleSaveVoiceSettings = async (newSettings: VoiceSettings) => {
+    setVoiceSettings(newSettings);
+    // The hook will automatically reinitialize with new settings
   };
 
   // Helper to get combined audio+video stream and video-only stream
@@ -1040,6 +1061,7 @@ const App: React.FC = () => {
         isRecording={isRecording}
         sessionStartTime={sessionStartTime}
         currentPersona={getPersonaName()}
+        onOpenSettings={() => setShowSettings(true)}
       />
       <main className="flex flex-1 min-h-0 overflow-auto">
         <div className="flex flex-1 flex-col lg:flex-row w-full">
@@ -1212,6 +1234,15 @@ const App: React.FC = () => {
               type={toast.type}
             />
           )}
+          
+          {/* Settings Modal */}
+          <SettingsModal
+            open={showSettings}
+            onClose={() => setShowSettings(false)}
+            currentSettings={voiceSettings}
+            onSaveSettings={handleSaveVoiceSettings}
+            isRecording={isRecording}
+          />
         </div>
       </main>
       <Footer />

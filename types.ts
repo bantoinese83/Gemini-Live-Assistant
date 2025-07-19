@@ -265,6 +265,15 @@ export interface SupabaseTranscript {
   created_at: string;
 }
 
+// Voice and language settings interface
+export interface VoiceSettings {
+  voiceId: string;
+  languageCode: string;
+  speechRate: number; // 0.25 to 4.0
+  pitch: number; // -20.0 to 20.0
+  volume: number; // 0.0 to 1.0
+}
+
 export const SupabaseSessionSchema = z.object({
   id: z.string(),
   user_id: z.string().nullable().optional(),
