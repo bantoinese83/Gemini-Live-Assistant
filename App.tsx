@@ -20,6 +20,7 @@ import {
   cacheTranscripts,
   deleteSessionAndData,
   uploadSessionAudio,
+  getSession,
 } from './services/sessionStorageService';
 import { supabase } from './services/supabaseClient';
 import type { SupabaseSession, SupabaseTranscript } from './types';
@@ -80,18 +81,28 @@ const App: React.FC = () => {
   const [selectedPersonaId, setSelectedPersonaId] = useState<string>(AI_PERSONA_PRESETS[0].id);
   // Track the last persona's default instruction for comparison
   const lastPersonaDefaultRef = React.useRef(systemInstruction);
+  
+  // Effect to sync initial persona with system instruction
+  useEffect(() => {
+    const currentPersona = AI_PERSONA_PRESETS.find(p => p.id === selectedPersonaId);
+    if (currentPersona && systemInstruction !== currentPersona.systemInstruction) {
+      setSystemInstruction(currentPersona.systemInstruction);
+      lastPersonaDefaultRef.current = currentPersona.systemInstruction;
+    }
+  }, [selectedPersonaId, systemInstruction]);
+  
   const handlePersonaChange = (personaId: string) => {
     const newPersona = AI_PERSONA_PRESETS.find(p => p.id === personaId);
     if (!newPersona) {
+      console.error('Persona not found:', personaId);
       return;
     }
-    // If the current instruction matches the last persona's default, update to new persona's default
-    const prevPersona = AI_PERSONA_PRESETS.find(p => p.id === selectedPersonaId);
-    const prevDefault = prevPersona ? prevPersona.systemInstruction : '';
-    if (systemInstruction.trim() === prevDefault.trim()) {
-      setSystemInstruction(newPersona.systemInstruction);
-      lastPersonaDefaultRef.current = newPersona.systemInstruction;
-    }
+    
+    console.log('Changing persona to:', newPersona.name, 'with instruction:', newPersona.systemInstruction.substring(0, 100) + '...');
+    
+    // Always update the system instruction when changing personas
+    setSystemInstruction(newPersona.systemInstruction);
+    lastPersonaDefaultRef.current = newPersona.systemInstruction;
     setSelectedPersonaId(personaId);
   };
 
@@ -253,8 +264,24 @@ const App: React.FC = () => {
     setShowSavePrompt(false);
     setPendingStop(false);
     if (!shouldSave) {
-      // Discard: Clean up local state only
+      // Discard: Clean up local state AND delete the session from database
       stopRecording();
+      
+      // Delete the session from database if it exists
+      const sessionId = sessionIdRef.current;
+      if (sessionId) {
+        try {
+          console.log('Deleting unsaved session:', sessionId);
+          // Get the session first to delete it properly
+          const session = await getSession(sessionId);
+          await deleteSessionAndData(session);
+          console.log('Successfully deleted unsaved session');
+        } catch (err: any) {
+          console.error('Failed to delete unsaved session:', err);
+          // Don't show error to user for cleanup failures
+        }
+      }
+      
       sessionIdRef.current = null;
       videoBlobRef.current = null;
       mediaRecorderRef.current = null;
@@ -336,8 +363,24 @@ const App: React.FC = () => {
   }, [stopRecording, uploadSessionVideo, uploadSessionAudio, supabase, localIsVideoEnabled]);
 
   /** Handles the reset session action. */
-  const handleResetSession = useCallback(() => {
+  const handleResetSession = useCallback(async () => {
     setStatusOverride(null);
+    
+    // If there's an active session that hasn't been saved, delete it
+    const sessionId = sessionIdRef.current;
+    if (sessionId) {
+      try {
+        console.log('Resetting session - deleting unsaved session:', sessionId);
+        const session = await getSession(sessionId);
+        await deleteSessionAndData(session);
+        console.log('Successfully deleted unsaved session during reset');
+      } catch (err: any) {
+        console.error('Failed to delete unsaved session during reset:', err);
+        // Don't show error to user for cleanup failures
+      }
+      sessionIdRef.current = null;
+    }
+    
     resetSession();
   }, [resetSession]);
   
@@ -540,7 +583,7 @@ const App: React.FC = () => {
         persona,
         systemInstruction,
         started_at: session.started_at,
-        ended_at: session.ended_at,
+        ended_at: session.ended_at || undefined,
       });
       setSessionAnalysisMap(prev => ({ ...prev, [session.id]: analysis }));
     } catch (e) {
@@ -567,7 +610,7 @@ const App: React.FC = () => {
         persona,
         systemInstruction,
         started_at: selectedSession.started_at,
-        ended_at: selectedSession.ended_at,
+        ended_at: selectedSession.ended_at || undefined,
       });
       setSessionAnalysisMap(prev => ({ ...prev, [selectedSession.id]: analysis }));
     } catch (e) {
@@ -653,6 +696,21 @@ const App: React.FC = () => {
       return () => clearTimeout(t);
     }
   }, [toast]);
+
+  // Cleanup unsaved sessions on component unmount
+  useEffect(() => {
+    return () => {
+      const sessionId = sessionIdRef.current;
+      if (sessionId) {
+        console.log('Component unmounting - cleaning up unsaved session:', sessionId);
+        // Use a fire-and-forget approach for cleanup on unmount
+        getSession(sessionId)
+          .then(session => deleteSessionAndData(session))
+          .then(() => console.log('Successfully cleaned up unsaved session on unmount'))
+          .catch(err => console.error('Failed to cleanup unsaved session on unmount:', err));
+      }
+    };
+  }, []);
 
   // --- Analytics Dashboard State ---
   const [showDashboard, setShowDashboard] = useState(false);

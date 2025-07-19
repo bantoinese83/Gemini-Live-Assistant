@@ -69,6 +69,26 @@ const PERSONA_METRICS: Record<string, { key: string; label: string; type: 'perce
     { key: 'laughter', label: 'Laughter', type: 'score', color: '#fbbf24' },
     { key: 'engagement', label: 'Engagement', type: 'score', color: '#3b82f6' },
   ],
+  'Startup Advisor': [
+    { key: 'innovation', label: 'Innovation', type: 'score', color: '#22c55e' },
+    { key: 'feasibility', label: 'Feasibility', type: 'score', color: '#38bdf8' },
+  ],
+  'Storytelling Companion': [
+    { key: 'creativity', label: 'Creativity', type: 'score', color: '#f472b6' },
+    { key: 'engagement', label: 'Engagement', type: 'score', color: '#3b82f6' },
+  ],
+  'Mindfulness Guide': [
+    { key: 'calmness', label: 'Calmness', type: 'score', color: '#a3e635' },
+    { key: 'awareness', label: 'Awareness', type: 'score', color: '#38bdf8' },
+  ],
+  'Debate Partner': [
+    { key: 'logic', label: 'Logic', type: 'score', color: '#fbbf24' },
+    { key: 'persuasion', label: 'Persuasion', type: 'score', color: '#ef4444' },
+  ],
+  'Coding Buddy': [
+    { key: 'problemSolving', label: 'Problem Solving', type: 'score', color: '#22c55e' },
+    { key: 'codeQuality', label: 'Code Quality', type: 'score', color: '#38bdf8' },
+  ],
 };
 
 const AnalyticsDrawer: React.FC<AnalyticsDrawerProps> = ({ open, loading, error, analytics, onClose }) => {

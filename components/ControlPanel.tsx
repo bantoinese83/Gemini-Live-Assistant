@@ -1,5 +1,5 @@
 import React from 'react';
-import { Play, Square, RotateCcw, Video, VideoOff, User2, Heart, Rocket, Smile, Laptop, Languages, Dumbbell, Mic } from 'lucide-react';
+import { Play, Square, RotateCcw, Video, VideoOff, User2, Heart, Rocket, Smile, Laptop, Languages, Dumbbell, Mic, TrendingUp, BookOpen, Sparkles, Scale, Code } from 'lucide-react';
 import Button from './common/Button';
 import type { IconProps } from '../types'; // IconProps is used by Button for its icon elements
 import { AI_PERSONA_PRESETS } from '../types';
@@ -41,6 +41,11 @@ const personaIcons: Record<string, React.ReactNode> = {
   'language-tutor': <Languages size={28} className="mb-1 text-accent-400" aria-label="Language Tutor" />,
   'fitness-coach': <Dumbbell size={28} className="mb-1 text-accent-400" aria-label="Fitness Coach" />,
   'standup-comedian': <Mic size={28} className="mb-1 text-accent-400" aria-label="Standup Comedian" />,
+  'startup-advisor': <TrendingUp size={28} className="mb-1 text-accent-400" aria-label="Startup Advisor" />,
+  'storytelling-companion': <BookOpen size={28} className="mb-1 text-accent-400" aria-label="Storytelling Companion" />,
+  'mindfulness-guide': <Sparkles size={28} className="mb-1 text-accent-400" aria-label="Mindfulness Guide" />,
+  'debate-partner': <Scale size={28} className="mb-1 text-accent-400" aria-label="Debate Partner" />,
+  'coding-buddy': <Code size={28} className="mb-1 text-accent-400" aria-label="Coding Buddy" />,
 };
 
 /**
@@ -80,7 +85,10 @@ const ControlPanel: React.FC<ControlPanelProps> = React.memo(({
             className={`flex flex-col items-center px-3 py-2 rounded-lg border transition-all shadow-sm min-w-[120px] max-w-[160px] focus:outline-none focus:ring-2 focus:ring-accent-500/70 bg-[var(--color-background-secondary)] hover:bg-[var(--color-background-tertiary)] ${selectedPersonaId === persona.id ? 'border-accent-500 ring-2 ring-accent-500/60 scale-105' : 'border-slate-600/40'}`}
             aria-pressed={selectedPersonaId === persona.id}
             aria-label={persona.name}
-            onClick={() => onPersonaChange(persona.id)}
+            onClick={() => {
+              console.log('Persona clicked:', persona.id, persona.name);
+              onPersonaChange(persona.id);
+            }}
           >
             <span>{personaIcons[persona.id]}</span>
             <span className="font-semibold text-sm mb-0.5 text-accent-400">{persona.name}</span>

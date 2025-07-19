@@ -107,6 +107,8 @@ export class GeminiLiveAI {
         systemInstruction: { parts: [{ text: this.systemInstruction }] }
       }),
     };
+    
+    console.log('GeminiLiveAI: Connecting with system instruction:', this.systemInstruction ? this.systemInstruction.substring(0, 100) + '...' : 'None');
 
     try {
       this.session = await this.client.live.connect({
