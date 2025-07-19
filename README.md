@@ -2,6 +2,10 @@
 
 An advanced AI-powered voice, video, and screen sharing live assistant using Google's Gemini Live API, featuring real-time conversation, multimodal interaction, session management, and comprehensive analytics. This project demonstrates a modern, full-stack approach to streaming AI audio/video/screen with sophisticated persona management and data persistence.
 
+## 🎥 Demo
+
+Watch the Gemini Live Assistant in action: [`gla-sr.mov`](gla-sr.mov)
+
 ---
 
 ## 🌟 Features
