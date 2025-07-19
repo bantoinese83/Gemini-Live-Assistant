@@ -38,6 +38,7 @@ import AnalyticsDrawer from './components/AnalyticsDrawer';
 import Toast from './components/common/ErrorBoundary';
 import Header from './components/Header';
 import Footer from './components/Footer';
+import SessionTimer from './components/SessionTimer';
 
 /**
  * The main application component.
@@ -146,6 +147,9 @@ const App: React.FC = () => {
     'none'
   );
 
+  // Session timer state
+  const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null);
+
   // Success overlay state
   const [showSuccess, setShowSuccess] = useState(false);
   // Local status override for forcing 'Ready' after save/discard
@@ -201,6 +205,7 @@ const App: React.FC = () => {
     setSaveError(null);
     setSavingMode('creating');
     setIsSaving(true);
+    setSessionStartTime(new Date()); // Set session start time
     try {
       const session = await createSession({
         persona: getPersonaName(),
@@ -344,6 +349,7 @@ const App: React.FC = () => {
         combinedStreamRef.current = null;
       }
       setMediaStream(null);
+      setSessionStartTime(null); // Reset session timer
       setStatusOverride('Ready');
       setTimeout(() => setStatusOverride(null), 2000);
       return;
@@ -398,6 +404,7 @@ const App: React.FC = () => {
         combinedStreamRef.current = null;
       }
       setMediaStream(null);
+      setSessionStartTime(null); // Reset session timer
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 2000);
       setStatusOverride('Ready');
@@ -433,6 +440,7 @@ const App: React.FC = () => {
       sessionIdRef.current = null;
     }
     
+    setSessionStartTime(null); // Reset session timer
     resetSession();
   }, [resetSession]);
   
@@ -1042,6 +1050,15 @@ const App: React.FC = () => {
                   <VolumeControl label="Input (Mic)" gainNode={inputGainNode} initialVolume={1.0} audioContext={inputAudioContext} />
                   <VolumeControl label="Output (AI Voice)" gainNode={outputGainNode} initialVolume={0.7} audioContext={outputAudioContext} />
                 </div>
+                
+                {/* Session Timer and Disk Space */}
+                <div className="pt-2 border-t border-[var(--color-border-primary)] mt-3">
+                  <SessionTimer 
+                    isRecording={isRecording}
+                    sessionStartTime={sessionStartTime}
+                  />
+                </div>
+                
                  <div className="pt-2 mt-auto"> {/* Push StatusDisplay to bottom of sidebar */}
                     <StatusDisplay
                       statusMessage={statusOverride || ((!isRecording && (!statusMessage || statusMessage.toLowerCase().includes('ready') || statusMessage === 'Initializing...')) ? 'Ready' : statusMessage)}
