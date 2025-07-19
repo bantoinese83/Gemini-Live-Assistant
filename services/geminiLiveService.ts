@@ -1,6 +1,6 @@
 import { GoogleGenAI, LiveServerMessage, Modality, Session, LiveServerContent, createPartFromUri, Type } from '@google/genai';
 import { createBlob, decode, decodeAudioData } from '../utils/audioUtils';
-import { VIDEO_FRAME_RATE, VIDEO_QUALITY, MAX_RECONNECT_ATTEMPTS, RECONNECT_DELAY_BASE_MS } from '../constants';
+import { MAX_RECONNECT_ATTEMPTS, RECONNECT_DELAY_BASE_MS } from '../constants';
 import type { GeminiLiveAICallbacks, SessionAnalysisResult, SupabaseTranscript } from '../types';
 import { supabase } from './supabaseClient';
 
@@ -18,23 +18,29 @@ export class GeminiLiveAI {
   private readonly _outputNode: GainNode; // For controlling AI voice output volume
   private nextStartTime = 0; // For scheduling AI audio output playback sequentially
 
-  // User media resources
+  // Media stream and audio processing
   private mediaStream: MediaStream | null = null;
   private mediaStreamSourceNode: MediaStreamAudioSourceNode | null = null; // Connects MediaStream to Web Audio API
-  private scriptProcessorNode: ScriptProcessorNode | null = null; // Processes raw audio from microphone
+  private audioWorkletNode: AudioWorkletNode | null = null; // Modern replacement for ScriptProcessorNode
+  private audioWorkletLoaded = false; // Track if audio worklet is loaded
 
-  // AI audio output resources
+  // AI audio output management
   private sources = new Set<AudioBufferSourceNode>(); // Active AI audio output sources being played
 
+  // Callbacks and state
   private callbacks: GeminiLiveAICallbacks; // Callbacks for UI updates
   private reconnectAttempts = 0;
   private isDisposed = false; // Flag to prevent operations on a disposed instance
   private isVideoTrackGloballyEnabled = true; // User preference for video state
 
-  // Video capture resources
+  // Video frame capture
   private videoElement: HTMLVideoElement | null = null; // Hidden video element for rendering MediaStream frames
   private canvasElement: HTMLCanvasElement | null = null; // Canvas for capturing frames from videoElement
   private videoFrameCaptureIntervalId: number | null = null; // Interval ID for video frame capture
+
+  // Constants
+  private static readonly VIDEO_FRAME_RATE = 1; // 1 FPS for video frame capture
+  private static readonly VIDEO_QUALITY = 0.8; // JPEG quality for video frames
 
   /**
    * Initializes the GeminiLiveAI service.
@@ -72,7 +78,72 @@ export class GeminiLiveAI {
     this._outputNode = this.outputAudioContext.createGain();
 
     this.initOutputAudio();
+    this.loadAudioWorklet(); // Load audio worklet for modern audio processing
     this.connect(); // Attempt initial connection
+  }
+
+  /**
+   * Loads the audio worklet processor for modern audio processing
+   */
+  private async loadAudioWorklet(): Promise<void> {
+    try {
+      await this.inputAudioContext.audioWorklet.addModule('/audio-processor.js');
+      this.audioWorkletLoaded = true;
+      console.log('Audio worklet loaded successfully');
+    } catch (error) {
+      console.error('Failed to load audio worklet:', error);
+      this.callbacks.onErrorUpdate('Audio processing setup failed');
+    }
+  }
+
+  /**
+   * Creates and configures the audio worklet node for processing audio
+   */
+  private createAudioWorkletNode(): AudioWorkletNode | null {
+    if (!this.audioWorkletLoaded) {
+      console.warn('Audio worklet not loaded, cannot create audio worklet node');
+      return null;
+    }
+
+    try {
+      const audioWorkletNode = new AudioWorkletNode(this.inputAudioContext, 'audio-processor', {
+        numberOfInputs: 1,
+        numberOfOutputs: 1,
+        channelCount: 1,
+        channelCountMode: 'explicit',
+        channelInterpretation: 'discrete'
+      });
+
+      // Handle messages from the audio worklet processor
+      audioWorkletNode.port.onmessage = (event) => {
+        if (this.isDisposed || !this.session) {
+          return;
+        }
+
+        const { pcmData } = event.data;
+        if (pcmData) {
+          try {
+            // Send the PCM data to the Gemini session
+            if (this.session) {
+              this.session.sendRealtimeInput({ media: createBlob(pcmData) });
+            }
+          } catch (e: unknown) {
+            if (this.isDisposed) {
+              return;
+            }
+            const errorMessage = (e instanceof Error) ? e.message : 'Unknown error sending audio data';
+            console.error("Error sending audio data to Gemini:", e);
+            this.callbacks.onErrorUpdate(`Error sending audio: ${errorMessage}`);
+            this.stopRecording(); // Stop recording on critical send error
+          }
+        }
+      };
+
+      return audioWorkletNode;
+    } catch (error) {
+      console.error('Failed to create audio worklet node:', error);
+      return null;
+    }
   }
 
   /**
@@ -295,10 +366,10 @@ export class GeminiLiveAI {
 
   /**
    * Checks if audio or video recording/capture is currently active.
-   * @returns True if recording (audio ScriptProcessorNode active) or video capture (interval active) is ongoing.
+   * @returns True if recording (audio AudioWorkletNode active) or video capture (interval active) is ongoing.
    */
   private isRecordingActive(): boolean {
-    return !!(this.scriptProcessorNode || this.videoFrameCaptureIntervalId);
+    return !!(this.audioWorkletNode || this.videoFrameCaptureIntervalId);
   }
 
   /**
@@ -349,7 +420,7 @@ export class GeminiLiveAI {
     try {
       this.mediaStream = await navigator.mediaDevices.getUserMedia({
         audio: { sampleRate: 16000, channelCount: 1, echoCancellation: true, noiseSuppression: true },
-        video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: VIDEO_FRAME_RATE } },
+        video: { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: GeminiLiveAI.VIDEO_FRAME_RATE } },
       });
 
       if (this.isDisposed) { // If disposed while waiting for media, cleanup and exit.
@@ -364,17 +435,14 @@ export class GeminiLiveAI {
       this.mediaStreamSourceNode = this.inputAudioContext.createMediaStreamSource(this.mediaStream);
       this.mediaStreamSourceNode.connect(this._inputNode); // Connect stream to input gain node
 
-      const bufferSize = 4096; // Standard buffer size for ScriptProcessorNode
-      this.scriptProcessorNode = this.inputAudioContext.createScriptProcessor(bufferSize, 1, 1); // 1 input, 1 output channel
-      this.scriptProcessorNode.onaudioprocess = this.handleAudioProcess.bind(this); // Process audio data
-      this._inputNode.connect(this.scriptProcessorNode); // Connect gain node to script processor
-
-      // Connect script processor to destination via a muted gain node to keep it processing.
-      // This is a common workaround for ScriptProcessorNode to ensure onaudioprocess fires.
-      const dummyGain = this.inputAudioContext.createGain();
-      dummyGain.gain.value = 0; // Mute it
-      this.scriptProcessorNode.connect(dummyGain);
-      dummyGain.connect(this.inputAudioContext.destination);
+      // Create and setup audio worklet node for modern audio processing
+      this.audioWorkletNode = this.createAudioWorkletNode();
+      if (this.audioWorkletNode) {
+        this._inputNode.connect(this.audioWorkletNode); // Connect gain node to audio worklet
+        this.audioWorkletNode.connect(this.inputAudioContext.destination); // Connect to destination to keep processing
+      } else {
+        console.warn('Audio worklet node creation failed, audio processing may not work properly');
+      }
 
       // Start video frame capture if video is globally enabled and a track is active
       if (this.isVideoTrackGloballyEnabled && this.mediaStream.getVideoTracks().some(t => t.enabled)) {
@@ -397,32 +465,7 @@ export class GeminiLiveAI {
     }
   }
 
-  /**
-   * Handles the `onaudioprocess` event from the `ScriptProcessorNode`.
-   * Extracts PCM data from the input buffer and sends it to the Gemini session.
-   * @param audioProcessingEvent - The `AudioProcessingEvent` containing audio data.
-   */
-  private handleAudioProcess(audioProcessingEvent: AudioProcessingEvent): void {
-    if (this.isDisposed || !this.session || !this.scriptProcessorNode) {
-      return;
-    }
-    // Get PCM data (Float32Array) from the input buffer for the first channel.
-    const pcmData = audioProcessingEvent.inputBuffer.getChannelData(0);
-    try {
-      // Create a blob (base64 encoded Int16 PCM) and send it to the session.
-      if (this.session) {
-        this.session.sendRealtimeInput({ media: createBlob(pcmData) });
-      }
-    } catch (e: unknown) {
-      if (this.isDisposed) {
-        return;
-      }
-      const errorMessage = (e instanceof Error) ? e.message : 'Unknown error sending audio data';
-      console.error("Error sending audio data to Gemini:", e);
-      this.callbacks.onErrorUpdate(`Error sending audio: ${errorMessage}`);
-      this.stopRecording(); // Stop recording on critical send error
-    }
-  }
+
 
   /**
    * Initiates video frame capture from the `mediaStream`.
@@ -471,14 +514,14 @@ export class GeminiLiveAI {
         // Draw current video frame to canvas
         ctx.drawImage(this.videoElement, 0, 0, this.canvasElement.width, this.canvasElement.height);
         // Convert canvas content to Blob (JPEG)
-        this.canvasElement.toBlob(this.handleVideoBlob.bind(this), 'image/jpeg', VIDEO_QUALITY);
+        this.canvasElement.toBlob(this.handleVideoBlob.bind(this), 'image/jpeg', GeminiLiveAI.VIDEO_QUALITY);
       } catch (e: unknown) {
         if (this.isDisposed) {
           return;
         }
         this.handleVideoProcessingError("Error capturing or drawing video frame to canvas", e);
       }
-    }, 1000 / VIDEO_FRAME_RATE); // Interval based on desired frame rate
+    }, 1000 / GeminiLiveAI.VIDEO_FRAME_RATE); // Interval based on desired frame rate
   }
 
   /**
@@ -586,13 +629,12 @@ export class GeminiLiveAI {
   }
 
   /**
-   * Cleans up resources specifically related to audio recording (ScriptProcessorNode, MediaStreamAudioSourceNode).
+   * Cleans up resources specifically related to audio recording (AudioWorkletNode, MediaStreamAudioSourceNode).
    */
   private cleanupAudioRecordingResources(): void {
-    if (this.scriptProcessorNode) {
-      this.scriptProcessorNode.disconnect(); // Disconnect from audio graph
-      this.scriptProcessorNode.onaudioprocess = null; // Remove event listener
-      this.scriptProcessorNode = null;
+    if (this.audioWorkletNode) {
+      this.audioWorkletNode.disconnect(); // Disconnect from audio graph
+      this.audioWorkletNode = null;
     }
     if (this.mediaStreamSourceNode) {
       this.mediaStreamSourceNode.disconnect(); // Disconnect from audio graph
