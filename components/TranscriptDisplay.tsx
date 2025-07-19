@@ -20,9 +20,9 @@ interface TranscriptBubbleProps {
  */
 const TranscriptBubble: React.FC<TranscriptBubbleProps> = React.memo(({ text, isFinal, variant }) => {
   const baseClass = `p-3 mb-2 shadow-lg leading-relaxed text-sm sm:text-base ${BORDER_RADIUS_LG} ${TRANSITION_FAST} max-w-full break-words fade-in`;
-  // Using direct Tailwind classes for bubble colors as they are simple and clear.
-  const userColor = "bg-sky-600 hover:bg-sky-500 text-white self-end"; 
-  const modelColor = "bg-slate-700 hover:bg-slate-600 text-slate-100 self-start";
+  // Using Google theme colors for bubble colors
+  const userColor = "bg-[var(--color-accent-blue)] hover:bg-[var(--color-accent-blue-hover)] text-white self-end"; 
+  const modelColor = "bg-[var(--color-background-tertiary)] hover:bg-[var(--color-border-primary)] text-[var(--color-text-primary)] self-start border border-[var(--color-border-primary)]";
   const interimOpacity = "opacity-70";
 
   return (
@@ -111,7 +111,7 @@ const TranscriptColumn: React.FC<TranscriptColumnProps> = React.memo(({
         <div ref={endOfMessagesRef} />
         {showScrollButton && (
           <button
-            className="absolute bottom-4 right-4 bg-[var(--color-accent-teal)] text-white px-3 py-1 rounded-full shadow-lg hover:bg-[var(--color-accent-teal-hover)] focus:outline-none focus:ring-2 focus:ring-sky-400 transition"
+            className="absolute bottom-4 right-4 bg-[var(--color-accent-blue)] text-white px-3 py-1 rounded-full shadow-lg hover:bg-[var(--color-accent-blue-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-blue)] transition"
             onClick={handleScrollToBottom}
             aria-label="Scroll to latest transcript"
           >
@@ -151,7 +151,7 @@ const TranscriptDisplay: React.FC<TranscriptDisplayProps> = React.memo(({
     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 h-full" role="log" aria-live="polite" aria-atomic="false">
       <TranscriptColumn
         title="You"
-        titleColorClass="text-[var(--color-accent-sky)]"
+        titleColorClass="text-[var(--color-accent-blue)]"
         transcript={userTranscript}
         isFinal={userTranscriptIsFinal}
         variant="user"
@@ -159,7 +159,7 @@ const TranscriptDisplay: React.FC<TranscriptDisplayProps> = React.memo(({
       />
       <TranscriptColumn
         title="AI Assistant"
-        titleColorClass="text-[var(--color-accent-teal)]"
+        titleColorClass="text-[var(--color-accent-green)]"
         transcript={modelTranscript}
         isFinal={modelTranscriptIsFinal}
         variant="model"

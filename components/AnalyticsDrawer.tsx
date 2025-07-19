@@ -198,38 +198,38 @@ const AnalyticsDrawer: React.FC<AnalyticsDrawerProps> = ({ open, loading, error,
               {/* Concentric Activity Rings Row */}
               <ConcentricActivityRings metrics={metrics} size={180} strokeWidth={18} />
               {/* Top Insights */}
-              <div className="bg-slate-800 rounded-xl p-6 shadow-inner flex flex-col gap-4">
-                <h3 className="font-semibold text-accent-400 text-lg mb-2">Top Insights</h3>
+              <div className="bg-[var(--color-background-secondary)] rounded-xl p-6 shadow-inner flex flex-col gap-4 border border-[var(--color-border-primary)]">
+                <h3 className="font-semibold text-[var(--color-accent-blue)] text-lg mb-2">Top Insights</h3>
                 {topInsights.length > 0 ? (
                   <ul className="flex flex-col gap-3">
                     {topInsights.map((insightObj: { insight: string; count: number }, idx: number) => (
                       <li key={idx} className="flex items-start gap-2">
-                        <span className="mt-1 text-accent-400">•</span>
-                        <span className="text-slate-100 text-sm leading-snug break-words">{insightObj.insight}</span>
+                        <span className="mt-1 text-[var(--color-accent-blue)]">•</span>
+                        <span className="text-[var(--color-text-primary)] text-sm leading-snug break-words">{insightObj.insight}</span>
                       </li>
                     ))}
                   </ul>
                 ) : (
-                  <div className="text-slate-400 text-xs">No insights available.</div>
+                  <div className="text-[var(--color-text-muted)] text-xs">No insights available.</div>
                 )}
               </div>
               {/* Fallback text summary */}
-              <div className="rounded-xl bg-slate-900/80 p-5 flex flex-col items-center gap-2 shadow border border-slate-700">
+              <div className="rounded-xl bg-[var(--color-background-secondary)] p-5 flex flex-col items-center gap-2 shadow border border-[var(--color-border-primary)]">
                 <div className="flex gap-8 mb-2">
                   <div className="flex flex-col items-center">
-                    <span className="text-2xl font-bold text-accent-400">{analytics.totalSessions}</span>
-                    <span className="text-xs text-slate-400 mt-1">Total Sessions</span>
+                    <span className="text-2xl font-bold text-[var(--color-accent-blue)]">{analytics.totalSessions}</span>
+                    <span className="text-xs text-[var(--color-text-muted)] mt-1">Total Sessions</span>
                   </div>
                   <div className="flex flex-col items-center">
-                    <span className="text-2xl font-bold text-green-400">{analytics.avgDuration.toFixed(1)}s</span>
-                    <span className="text-xs text-slate-400 mt-1">Avg. Duration</span>
+                    <span className="text-2xl font-bold text-[var(--color-accent-green)]">{analytics.avgDuration.toFixed(1)}s</span>
+                    <span className="text-xs text-[var(--color-text-muted)] mt-1">Avg. Duration</span>
                   </div>
                   <div className="flex flex-col items-center">
                     <span className="text-2xl font-bold" style={{ color: sentimentColor }}>{sentimentShortLabel}</span>
-                    <span className="text-xs text-slate-400 mt-1">Sentiment</span>
+                    <span className="text-xs text-[var(--color-text-muted)] mt-1">Sentiment</span>
                   </div>
                 </div>
-                <div className="text-xs text-slate-300 text-center mt-2">
+                <div className="text-xs text-[var(--color-text-secondary)] text-center mt-2">
                   <div><span className="font-semibold">Most Common Sentiment:</span> {sentiment}</div>
                   {analytics.topInsights && analytics.topInsights.length > 0 && (
                     <div className="mt-1"><span className="font-semibold">Top Insight:</span> {topInsights[0]?.insight}</div>
