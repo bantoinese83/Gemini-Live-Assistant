@@ -199,6 +199,48 @@
   animation: pulse 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
+/* AI Robot Logo Animations */
+@keyframes robotGlow {
+  0%, 100% {
+    box-shadow: 0 0 30px rgba(59, 130, 246, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 40px rgba(59, 130, 246, 0.6), 0 0 60px rgba(59, 130, 246, 0.3);
+  }
+}
+
+@keyframes robotEyeBlink {
+  0%, 90%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  95% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+}
+
+@keyframes robotMouthTalk {
+  0%, 100% {
+    transform: translateX(-50%) scaleY(1);
+  }
+  50% {
+    transform: translateX(-50%) scaleY(1.5);
+  }
+}
+
+.robot-glow {
+  animation: robotGlow 3s ease-in-out infinite;
+}
+
+.robot-eye-blink {
+  animation: robotEyeBlink 4s ease-in-out infinite;
+}
+
+.robot-mouth-talk {
+  animation: robotMouthTalk 0.5s ease-in-out infinite;
+}
+
 /* Enhanced glow effect */
 .animate-glow {
   animation: glow 1.2s ease-in-out infinite alternate;
