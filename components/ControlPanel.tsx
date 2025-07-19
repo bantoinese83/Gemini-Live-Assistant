@@ -150,7 +150,7 @@ const ControlPanel: React.FC<ControlPanelProps> = React.memo(({
       </div>
       {/* Gooey Video Toggle Row */}
       <div className="flex items-center justify-between w-full py-2">
-        <span className={`font-semibold text-base select-none transition-colors duration-300 ${isVideoEnabled ? 'text-[var(--color-accent-teal)]' : 'text-slate-400'}`}
+        <span className={`font-semibold text-base select-none transition-colors duration-300 ${isVideoEnabled ? 'text-[var(--color-accent-blue)]' : 'text-[var(--color-text-muted)]'}`}
           >
           {isVideoEnabled ? 'Video On' : 'Video Off'}
         </span>

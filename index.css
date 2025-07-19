@@ -1,28 +1,33 @@
 @import "tailwindcss";
 
 :root {
-  /* Color Palette */
-  --color-background-primary: #0f172a; /* slate-900 */
-  --color-background-secondary: #1e293b; /* slate-800 */
-  --color-background-tertiary: #334155; /* slate-700 */
+  /* Google-Inspired Color Palette */
+  --color-background-primary: #ffffff; /* Google White */
+  --color-background-secondary: #f8f9fa; /* Google Light Gray */
+  --color-background-tertiary: #e8eaed; /* Google Medium Gray */
 
-  --color-text-primary: #e2e8f0; /* slate-200 */
-  --color-text-secondary: #94a3b8; /* slate-400 */
-  --color-text-muted: #64748b; /* slate-500 */
+  --color-text-primary: #202124; /* Google Dark Gray */
+  --color-text-secondary: #5f6368; /* Google Gray */
+  --color-text-muted: #9aa0a6; /* Google Light Gray */
 
-  --color-accent-teal: #14b8a6; /* teal-500 */
-  --color-accent-teal-hover: #0d9488; /* teal-600 */
-  --color-accent-sky: #38bdf8; /* sky-400 */
-  --color-accent-sky-hover: #0ea5e9; /* sky-500 */
-  --color-accent-green: #22c55e; /* green-500 */
-  --color-accent-green-hover: #16a34a; /* green-600 */
-  --color-accent-red: #ef4444; /* red-500 */
-  --color-accent-red-hover: #dc2626; /* red-600 */
-  --color-accent-amber: #f59e0b; /* amber-500 */
-  --color-accent-amber-hover: #d97706; /* amber-600 */
+  /* Google Brand Colors */
+  --color-accent-blue: #4285f4; /* Google Blue */
+  --color-accent-blue-hover: #3367d6; /* Google Blue Darker */
+  --color-accent-red: #ea4335; /* Google Red */
+  --color-accent-red-hover: #d93025; /* Google Red Darker */
+  --color-accent-yellow: #fbbc05; /* Google Yellow */
+  --color-accent-yellow-hover: #f9ab00; /* Google Yellow Darker */
+  --color-accent-green: #34a853; /* Google Green */
+  --color-accent-green-hover: #137333; /* Google Green Darker */
 
-  --color-border-primary: #334155; /* slate-700 */
-  --color-border-secondary: #475569; /* slate-600 */
+  /* Legacy accent colors for compatibility */
+  --color-accent-teal: #4285f4; /* Now Google Blue */
+  --color-accent-teal-hover: #3367d6; /* Now Google Blue Darker */
+  --color-accent-sky: #4285f4; /* Now Google Blue */
+  --color-accent-sky-hover: #3367d6; /* Now Google Blue Darker */
+
+  --color-border-primary: #dadce0; /* Google Border Gray */
+  --color-border-secondary: #e8eaed; /* Google Medium Gray */
 
   /* Typography */
   --font-family-sans: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
@@ -36,15 +41,15 @@
   --radius-lg: 0.75rem; /* rounded-xl */
 
   /* Focus Ring */
-  --focus-ring-color: var(--color-accent-teal);
+  --focus-ring-color: var(--color-accent-blue);
   --focus-ring-offset-color-dark: var(--color-background-primary);
   --focus-ring-offset-color-light: var(--color-background-secondary);
 
   /* AI Bot Specific Colors */
-  --bot-face-bg: #111827; /* gray-900 (slightly darker than app's secondary bg) */
-  --bot-body-color: var(--color-text-primary); /* Use themed text color for bot body */
-  --bot-accent-primary: var(--color-accent-teal); /* Teal for primary bot features */
-  --bot-accent-secondary: #ec4899; /* pink-500 for secondary bot features (eyes) */
+  --bot-face-bg: #202124; /* Google Dark Gray for bot face */
+  --bot-body-color: #4285f4; /* Google Blue for bot body */
+  --bot-accent-primary: var(--color-accent-blue); /* Google Blue for primary bot features */
+  --bot-accent-secondary: var(--color-accent-green); /* Google Green for secondary bot features (eyes) */
 }
 
 /* Custom scrollbar */
@@ -56,11 +61,11 @@
   background: var(--color-background-secondary);
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--color-background-tertiary);
+  background: var(--color-border-primary);
   border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-border-secondary);
+  background: var(--color-text-muted);
 }
 
 body {
@@ -121,8 +126,8 @@ body {
   position: relative;
   display: grid;
   place-items: center;
-  box-shadow: 0 4px 32px 0 #14b8a655, 0 0 0 4px #38bdf855;
-  filter: drop-shadow(0 0 8px #38bdf8cc);
+  box-shadow: 0 4px 32px 0 #4285f455, 0 0 0 4px #4285f455;
+  filter: drop-shadow(0 0 8px #4285f4cc);
 }
  @media (min-width: 640px) { /* sm breakpoint */
   .ai-bot {
