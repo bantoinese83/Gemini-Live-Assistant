@@ -129,12 +129,12 @@ export const ConcentricActivityRings: React.FC<ConcentricActivityRingsProps> = (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 18, minWidth: 110 }}>
         {rings.map((ring, i) => (
           <div key={ring.label + '-stat'} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-            <span style={{ color: '#a3a3a3', fontSize: 15, fontWeight: 500, letterSpacing: 1 }}>{ring.label.toUpperCase()}</span>
+            <span style={{ color: '#5f6368', fontSize: 15, fontWeight: 500, letterSpacing: 1 }}>{ring.label.toUpperCase()}</span>
             <span style={{ color: ring.color, fontSize: 26, fontWeight: 700, lineHeight: 1.1 }}>
               {ring.value}
-              <span style={{ color: '#fff', fontWeight: 400, fontSize: 20, marginLeft: 2 }}>
+              <span style={{ color: '#5f6368', fontWeight: 400, fontSize: 20, marginLeft: 2 }}>
                 /{ring.max}
-                {ring.unit && <span style={{ color: '#a3a3a3', fontSize: 15, marginLeft: 2 }}>{ring.unit}</span>}
+                {ring.unit && <span style={{ color: '#5f6368', fontSize: 15, marginLeft: 2 }}>{ring.unit}</span>}
               </span>
             </span>
           </div>
