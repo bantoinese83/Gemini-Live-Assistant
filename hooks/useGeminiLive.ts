@@ -67,6 +67,7 @@ const useGeminiLive = (systemInstruction: string = DEFAULT_SYSTEM_INSTRUCTION): 
   // Effect for initializing and disposing the GeminiLiveAI instance.
   // This effect re-runs if `systemInstruction` changes, allowing re-initialization with a new persona.
   useEffect(() => {
+    console.log('useGeminiLive: systemInstruction changed to:', systemInstruction.substring(0, 100) + '...');
     if (!process.env.API_KEY) {
       const keyError = "API_KEY environment variable is not defined. Please ensure it's set in your environment.";
       if (isMountedRef.current) {
