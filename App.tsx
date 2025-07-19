@@ -33,7 +33,7 @@ import SuccessOverlay from './components/SuccessOverlay';
 import { analyzeSessionWithGemini } from './services/geminiLiveService';
 import type { SessionAnalysisResult } from './types';
 import AnalyticsDrawer from './components/AnalyticsDrawer';
-import Toast from './components/common/ErrorBoundary';
+import { Toast } from './components/common/ErrorBoundary';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import SessionTimer from './components/SessionTimer';

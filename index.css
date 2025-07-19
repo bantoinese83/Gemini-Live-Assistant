@@ -53,19 +53,54 @@
   --bot-accent-tertiary: #34a853; /* Google Green for tertiary features */
 }
 
-/* Custom scrollbar */
+/* Enhanced scrollbar styles */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 ::-webkit-scrollbar-track {
   background: var(--color-background-secondary);
+  border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb {
   background: var(--color-border-primary);
   border-radius: 4px;
+  transition: background-color 0.2s ease;
 }
 ::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+::-webkit-scrollbar-corner {
+  background: var(--color-background-secondary);
+}
+
+/* Custom scrollbar for specific elements */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--color-border-primary);
+  border-radius: 3px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+/* Thin scrollbar variant */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 4px;
+}
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--color-border-primary);
+  border-radius: 2px;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-muted);
 }
 
@@ -112,6 +147,77 @@
   80%, 100% { content: '...'; }
 }
 
+/* Enhanced animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Animation utility classes */
+.animate-fade-in-up {
+  animation: fadeInUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Enhanced pulse animation */
+.animate-pulse-slow {
+  animation: pulse 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Enhanced glow effect */
+.animate-glow {
+  animation: glow 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+  from {
+    text-shadow: 0 0 8px currentColor, 0 0 16px currentColor;
+  }
+  to {
+    text-shadow: 0 0 16px currentColor, 0 0 32px currentColor;
+  }
+}
+
+/* Drop shadow glow utility */
+.drop-shadow-glow {
+  filter: drop-shadow(0 0 8px currentColor);
+}
+
 body {
   background-color: var(--color-background-primary);
   color: var(--color-text-primary);
@@ -119,6 +225,7 @@ body {
   font-family: var(--font-family-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  scroll-behavior: smooth;
 }
 
 #root {
@@ -220,6 +327,7 @@ body {
   scale: var(--ealw, 1) 1;
   transition: scale 0.1s ease-out;
 }
+
 .ai-bot .head:after {
   right: -4px;
   left: unset;
@@ -289,11 +397,9 @@ body {
 
 * { box-sizing: border-box; }
 
-/* Add fade-in animation for transcript bubbles */
 .fade-in { animation: fadeIn 0.4s cubic-bezier(.4,2,.6,1); }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
 
-/* StatusDisplay animated styles */
 .animate-pulse-slow { animation: pulse 2.2s cubic-bezier(.4,0,.6,1) infinite; }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
 .animate-glow { animation: glow 1.2s ease-in-out infinite alternate; }
@@ -303,6 +409,4 @@ body {
 .animate-wave3 { animation: waveBar 1.3s 0s infinite cubic-bezier(.4,0,.6,1) alternate; }
 .animate-wave4 { animation: waveBar 1.0s -0.15s infinite cubic-bezier(.4,0,.6,1) alternate; }
 .animate-wave5 { animation: waveBar 1.2s -0.05s infinite cubic-bezier(.4,0,.6,1) alternate; }
-@keyframes waveBar { 0% { height: 0.5rem; } 50% { height: 1.25rem; } 100% { height: 0.5rem; } }
-
-/* AI Bot Animation Keyframes - Removed busy animations for cleaner look */ 
+@keyframes waveBar { 0% { height: 0.5rem; } 50% { height: 1.25rem; } 100% { height: 0.5rem; } } 

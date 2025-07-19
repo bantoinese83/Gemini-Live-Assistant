@@ -245,10 +245,13 @@ export interface SupabaseSession {
   id: string;
   user_id?: string | null;
   persona: string;
+  personaDescription?: string; // Added for UI display
   started_at: string;
   ended_at?: string | null;
   video_url?: string | null;
   audio_url?: string | null;
+  previewSnippet?: string; // Added for session preview
+  transcripts?: SupabaseTranscript[]; // Added for session transcripts
   metadata?: Record<string, any>;
 }
 

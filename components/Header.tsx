@@ -47,7 +47,7 @@ const Header: React.FC<HeaderProps> = ({
     <div className="flex items-center gap-4">
       <span className="custom-logo text-4xl sm:text-6xl md:text-7xl font-extrabold uppercase tracking-tight relative select-none flex items-center gap-1">
         <GoogleLogo className="w-10 h-10 sm:w-14 sm:h-14 md:w-16 md:h-16" />
-        <span>emini <span className="text-[var(--color-accent-blue)]">Live</span></span>
+        <span>LA</span>
       </span>
       {/* Screen Share Preview */}
       <ScreenSharePreview

@@ -1,6 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import Button from './common/Button';
-import { BORDER_RADIUS_MD, TRANSITION_MEDIUM, FOCUS_RING_BASE } from '../theme';
+
 import { Check } from 'lucide-react';
 import LoadingSpinner from './LoadingSpinner';
 
@@ -92,7 +91,7 @@ const SystemInstructionInput: React.FC<SystemInstructionInputProps> = React.memo
           aria-label="AI Persona System Instruction Input"
         />
         <span className="absolute top-2 right-2" aria-live="polite">
-          {isApplying ? <LoadingSpinner size={18} /> : applied ? <Check size={18} className="text-green-400" title="Instruction applied" aria-label="Instruction applied" /> : null}
+          {isApplying ? <LoadingSpinner size={18} /> : applied ? <Check size={18} className="text-green-400" aria-label="Instruction applied" /> : null}
         </span>
       </div>
       <p id="system-instruction-help" className="text-xs text-[var(--color-text-muted)]">
