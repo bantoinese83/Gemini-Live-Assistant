@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { History, BarChart2, Settings, HelpCircle, Activity } from 'lucide-react';
 import ScreenSharePreview from './ScreenSharePreview';
 
