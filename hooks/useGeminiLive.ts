@@ -37,6 +37,7 @@ const useGeminiLive = (systemInstruction: string = DEFAULT_SYSTEM_INSTRUCTION): 
 
   // Screen sharing state
   const [isScreenSharing, setIsScreenSharing] = useState(false);
+  const [screenStream, setScreenStream] = useState<MediaStream | null>(null);
 
   // Refs for managing throttled transcript updates to optimize re-renders.
   // These store the latest interim transcript received before the throttle timeout.
@@ -186,6 +187,17 @@ const useGeminiLive = (systemInstruction: string = DEFAULT_SYSTEM_INSTRUCTION): 
           return;
         }
         setIsScreenSharing(isScreenSharing);
+        // Update screen stream when screen sharing state changes
+        if (isScreenSharing) {
+          // Use setTimeout to ensure the screen stream is available
+          setTimeout(() => {
+            if (isMountedRef.current) {
+              setScreenStream(geminiInstanceRef.current?.getScreenStream() || null);
+            }
+          }, 100);
+        } else {
+          setScreenStream(null);
+        }
       },
     };
 
@@ -354,6 +366,7 @@ const useGeminiLive = (systemInstruction: string = DEFAULT_SYSTEM_INSTRUCTION): 
     modelTranscriptIsFinal,
     setVideoTrackEnabled,
     isScreenSharing,
+    screenStream,
     startScreenSharing,
     stopScreenSharing,
   };

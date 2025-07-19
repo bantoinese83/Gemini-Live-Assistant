@@ -1,6 +1,7 @@
 import React from 'react';
 import { History, BarChart2 } from 'lucide-react';
 import ScreenShareButton from './ScreenShareButton';
+import ScreenSharePreview from './ScreenSharePreview';
 
 // Google "G" logo component
 const GoogleLogo: React.FC<{ className?: string }> = ({ className = "w-8 h-8" }) => (
@@ -33,6 +34,7 @@ interface HeaderProps {
   onToggleDashboard: () => void;
   showDashboard: boolean;
   isScreenSharing: boolean;
+  screenStream: MediaStream | null;
   onStartScreenSharing: () => Promise<void>;
   onStopScreenSharing: () => void;
 }
@@ -42,14 +44,23 @@ const Header: React.FC<HeaderProps> = ({
   onToggleDashboard, 
   showDashboard, 
   isScreenSharing, 
+  screenStream,
   onStartScreenSharing, 
   onStopScreenSharing 
 }) => (
   <header className="custom-header w-full flex flex-row items-center justify-between py-2 sm:py-3 bg-[var(--color-background-primary)] border-b-4 border-double border-[var(--color-border-primary)]">
-          <span className="custom-logo text-4xl sm:text-6xl md:text-7xl font-extrabold uppercase tracking-tight relative select-none flex items-center gap-1">
+    <div className="flex items-center gap-4">
+      <span className="custom-logo text-4xl sm:text-6xl md:text-7xl font-extrabold uppercase tracking-tight relative select-none flex items-center gap-1">
         <GoogleLogo className="w-10 h-10 sm:w-14 sm:h-14 md:w-16 md:h-16" />
         <span>emini <span className="text-[var(--color-accent-blue)]">Live</span></span>
       </span>
+      {/* Screen Share Preview */}
+      <ScreenSharePreview
+        screenStream={screenStream}
+        isScreenSharing={isScreenSharing}
+        className="hidden sm:block"
+      />
+    </div>
     <div className="flex flex-col gap-4 mr-8 sm:mr-12">
       <ScreenShareButton
         isScreenSharing={isScreenSharing}
