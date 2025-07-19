@@ -1,6 +1,5 @@
 import React from 'react';
 import { History, BarChart2 } from 'lucide-react';
-import ScreenShareButton from './ScreenShareButton';
 import ScreenSharePreview from './ScreenSharePreview';
 
 // Google "G" logo component
@@ -35,8 +34,6 @@ interface HeaderProps {
   showDashboard: boolean;
   isScreenSharing: boolean;
   screenStream: MediaStream | null;
-  onStartScreenSharing: () => Promise<void>;
-  onStopScreenSharing: () => void;
 }
 
 const Header: React.FC<HeaderProps> = ({ 
@@ -44,9 +41,7 @@ const Header: React.FC<HeaderProps> = ({
   onToggleDashboard, 
   showDashboard, 
   isScreenSharing, 
-  screenStream,
-  onStartScreenSharing, 
-  onStopScreenSharing 
+  screenStream
 }) => (
   <header className="custom-header w-full flex flex-row items-center justify-between py-2 sm:py-3 bg-[var(--color-background-primary)] border-b-4 border-double border-[var(--color-border-primary)]">
     <div className="flex items-center gap-4">
@@ -62,11 +57,6 @@ const Header: React.FC<HeaderProps> = ({
       />
     </div>
     <div className="flex flex-col gap-4 mr-8 sm:mr-12">
-      <ScreenShareButton
-        isScreenSharing={isScreenSharing}
-        onStartScreenSharing={onStartScreenSharing}
-        onStopScreenSharing={onStopScreenSharing}
-      />
       <button
         className="w-12 h-12 rounded-full bg-[var(--color-accent-green)] shadow-xl flex items-center justify-center hover:bg-[var(--color-accent-green-hover)] focus:outline-none focus:ring-4 focus:ring-[var(--color-accent-blue)] transition-all duration-200 hover-lift button-press focus-enhanced"
         onClick={onShowHistory}

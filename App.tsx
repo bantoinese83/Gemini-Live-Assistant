@@ -16,15 +16,13 @@ import {
   createSession,
   addTranscript,
   uploadSessionVideo,
-  getCachedTranscripts,
-  cacheTranscripts,
   deleteSessionAndData,
   uploadSessionAudio,
   getSession,
 } from './services/sessionStorageService';
 import { supabase } from './services/supabaseClient';
 import type { SupabaseSession, SupabaseTranscript } from './types';
-import { History, BarChart2 } from 'lucide-react';
+
 import axios from 'axios';
 import axiosRetry from 'axios-retry';
 import { SupabaseSessionArraySchema, SupabaseTranscriptArraySchema } from './types';
@@ -39,6 +37,7 @@ import Toast from './components/common/ErrorBoundary';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import SessionTimer from './components/SessionTimer';
+import SessionDownloader from './components/SessionDownloader';
 
 /**
  * The main application component.
@@ -453,6 +452,14 @@ const App: React.FC = () => {
     setVideoTrackEnabled?.(enable); // Call hook function if available
   }, [setVideoTrackEnabled]);
 
+  const handleToggleScreenShare = useCallback(async (enable: boolean) => {
+    if (enable) {
+      await startScreenSharing();
+    } else {
+      stopScreenSharing();
+    }
+  }, [startScreenSharing, stopScreenSharing]);
+
   /**
    * Handles changes to the system instruction.
    * Updates local state. The `useGeminiLive` hook will re-initialize if `systemInstruction` changes.
@@ -488,6 +495,10 @@ const App: React.FC = () => {
   const [showPlayback, setShowPlayback] = useState(false);
   const [playbackVideoUrl, setPlaybackVideoUrl] = useState<string | null>(null);
   const [playbackAudioUrl, setPlaybackAudioUrl] = useState<string | null>(null);
+  const [downloadSession, setDownloadSession] = useState<SupabaseSession | null>(null);
+  const [downloadTranscripts, setDownloadTranscripts] = useState<SupabaseTranscript[]>([]);
+  const [downloadVideoUrl, setDownloadVideoUrl] = useState<string | null>(null);
+  const [downloadAudioUrl, setDownloadAudioUrl] = useState<string | null>(null);
 
   // Set up axios-retry for all axios requests
   axiosRetry(axios, { retries: 3, retryDelay: axiosRetry.exponentialDelay });
@@ -809,6 +820,61 @@ const App: React.FC = () => {
     }
   };
 
+  // Handler for downloading sessions
+  const handleDownloadSession = async (session: SupabaseSession) => {
+    try {
+      // Fetch transcripts for the session
+      const { data: transcripts, error } = await supabase
+        .from('transcripts')
+        .select('*')
+        .eq('session_id', session.id)
+        .order('timestamp_ms', { ascending: true });
+      
+      if (error) throw error;
+      setDownloadTranscripts(transcripts || []);
+
+      // Get signed URLs for media files
+      let videoUrl: string | null = null;
+      let audioUrl: string | null = null;
+
+      if (session.video_url) {
+        try {
+          const { data, error } = await supabase.storage
+            .from('session-videos')
+            .createSignedUrl(session.video_url, 60 * 60);
+          if (!error && data?.signedUrl) {
+            videoUrl = data.signedUrl;
+          }
+        } catch (error) {
+          console.warn('Failed to get video URL:', error);
+        }
+      }
+
+      if (session.audio_url) {
+        try {
+          const { data, error } = await supabase.storage
+            .from('session_audio')
+            .createSignedUrl(session.audio_url, 60 * 60);
+          if (!error && data?.signedUrl) {
+            audioUrl = data.signedUrl;
+          }
+        } catch (error) {
+          console.warn('Failed to get audio URL:', error);
+        }
+      }
+
+      setDownloadVideoUrl(videoUrl);
+      setDownloadAudioUrl(audioUrl);
+      setDownloadSession(session);
+    } catch (error) {
+      console.error('Failed to prepare session for download:', error);
+      setToast({
+        message: 'Failed to prepare session for download',
+        type: 'error'
+      });
+    }
+  };
+
   // --- Session History Drawer ---
   const [videoThumbnails, setVideoThumbnails] = useState<{ [sessionId: string]: string }>({});
   const [thumbnailLoading, setThumbnailLoading] = useState<{ [sessionId: string]: boolean }>({});
@@ -847,30 +913,13 @@ const App: React.FC = () => {
 
   // Update handleDeleteSession to delete immediately
   const [toast, setToast] = useState<{ message: string, actionLabel?: string, onAction?: () => void, type?: 'success' | 'error' | 'info' } | null>(null);
-  const [recentlyDeleted, setRecentlyDeleted] = useState<{ session: SupabaseSession, index: number } | null>(null);
 
   const handleDeleteSession = async (sessionId: string) => {
     const session = sessions.find(s => s.id === sessionId);
     if (!session) return;
-    const index = sessions.findIndex(s => s.id === sessionId);
     try {
       await deleteSessionAndData(session);
-      setRecentlyDeleted({ session, index });
       setSessions(prev => prev.filter(s => s.id !== sessionId));
-      setToast({
-        message: 'Session deleted',
-        actionLabel: 'Undo',
-        onAction: () => {
-          setSessions(prev => {
-            const arr = [...prev];
-            arr.splice(index, 0, session);
-            return arr;
-          });
-          setToast({ message: 'Session restored', type: 'success', onAction: undefined });
-          setRecentlyDeleted(null);
-        },
-        type: 'info',
-      });
       setToast({ message: 'Session deleted!', type: 'success' });
     } catch (err: any) {
       setToast({ message: 'Failed to delete session: ' + (err.message || err.toString()), type: 'error' });
@@ -988,8 +1037,6 @@ const App: React.FC = () => {
         showDashboard={showDashboard}
         isScreenSharing={isScreenSharing}
         screenStream={screenStream}
-        onStartScreenSharing={startScreenSharing}
-        onStopScreenSharing={stopScreenSharing}
       />
       <main className="flex flex-1 min-h-0 overflow-auto">
         <div className="flex flex-1 flex-col lg:flex-row w-full">
@@ -1011,6 +1058,7 @@ const App: React.FC = () => {
             thumbnailLoading={thumbnailLoading}
             onSessionClick={handleSessionClick}
             onDeleteSession={handleDeleteSession}
+            onDownloadSession={handleDownloadSession}
             onClose={() => setShowHistory(false)}
             hasMoreSessions={hasMoreSessions}
             isFetchingMore={isFetchingMore}
@@ -1039,10 +1087,12 @@ const App: React.FC = () => {
                   isInitialized={isInitialized}
                   apiKeyMissing={apiKeyMissing}
                   isVideoEnabled={localIsVideoEnabled}
+                  isScreenSharing={isScreenSharing}
                   onStartRecording={handleStartRecording}
                   onStopRecording={handleStopRecording}
                   onResetSession={handleResetSession}
                   onToggleVideo={handleToggleVideo}
+                  onToggleScreenShare={handleToggleScreenShare}
                   selectedPersonaId={selectedPersonaId}
                   onPersonaChange={handlePersonaChange}
                 />
@@ -1127,6 +1177,29 @@ const App: React.FC = () => {
             analysisLoading={analysisLoading}
             onReanalyze={handleReanalyze}
           />
+          {/* Session Download Modal */}
+          {downloadSession && (
+            <div className="fixed inset-0 bg-black/70 z-60 flex items-center justify-center">
+              <div
+                className="bg-[var(--color-background-primary)] rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto m-4"
+                onClick={e => e.stopPropagation()}
+              >
+                <SessionDownloader
+                  session={downloadSession}
+                  transcripts={downloadTranscripts}
+                  videoUrl={downloadVideoUrl}
+                  audioUrl={downloadAudioUrl}
+                  sessionAnalysis={downloadSession ? sessionAnalysisMap[downloadSession.id] : undefined}
+                  onClose={() => {
+                    setDownloadSession(null);
+                    setDownloadTranscripts([]);
+                    setDownloadVideoUrl(null);
+                    setDownloadAudioUrl(null);
+                  }}
+                />
+              </div>
+            </div>
+          )}
           {toast && (
             <Toast
               message={toast.message}

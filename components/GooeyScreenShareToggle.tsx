@@ -1,13 +1,13 @@
 import React from 'react';
 
-interface GooeySvgToggleProps {
+interface GooeyScreenShareToggleProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
   disabled?: boolean;
   ariaLabel?: string;
 }
 
-const GooeySvgToggle: React.FC<GooeySvgToggleProps> = ({ checked, onChange, disabled, ariaLabel }) => {
+const GooeyScreenShareToggle: React.FC<GooeyScreenShareToggleProps> = ({ checked, onChange, disabled, ariaLabel }) => {
   // Keyboard accessibility: toggle on Space/Enter
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (disabled) return;
@@ -33,13 +33,13 @@ const GooeySvgToggle: React.FC<GooeySvgToggleProps> = ({ checked, onChange, disa
         <path
           className="toggle-background"
           d="M71 142C31.7878 142 0 110.212 0 71C0 31.7878 31.7878 0 71 0C110.212 0 119 30 146 30C173 30 182 0 221 0C260 0 292 31.7878 292 71C292 110.212 260.212 142 221 142C181.788 142 173 112 146 112C119 112 110.212 142 71 142Z"
-          fill={checked ? '#14b8a6' : '#d3d3d6'}
+          fill={checked ? '#ea4335' : '#d3d3d6'} // Google Red when active
         />
-        {/* Video On icon (left bar) */}
+        {/* Screen Share On icon (monitor) */}
         <g style={{ opacity: checked ? 1 : 0, transition: 'opacity 0.4s' }}>
           <rect className="toggle-icon on" x="64" y="39" width="12" height="64" rx="6" fill="#fff" />
         </g>
-        {/* Video Off icon (right circle) */}
+        {/* Screen Share Off icon (monitor off) */}
         <g style={{ opacity: checked ? 0 : 1, transition: 'opacity 0.4s' }}>
           <path
             className="toggle-icon off"
@@ -103,4 +103,4 @@ const GooeySvgToggle: React.FC<GooeySvgToggleProps> = ({ checked, onChange, disa
   );
 };
 
-export default GooeySvgToggle; 
+export default GooeyScreenShareToggle; 

@@ -6,6 +6,7 @@ import { AI_PERSONA_PRESETS } from '../types';
 import './PlayResetButton.css'; // (Create this CSS file for custom styles)
 import './GooeyToggle.css'; // Add gooey toggle styles
 import GooeySvgToggle from './GooeySvgToggle';
+import GooeyScreenShareToggle from './GooeyScreenShareToggle';
 
 /**
  * Props for the ControlPanel component.
@@ -19,6 +20,8 @@ interface ControlPanelProps {
   apiKeyMissing: boolean;
   /** Indicates if video is currently enabled by the user. */
   isVideoEnabled: boolean;
+  /** Indicates if screen sharing is currently active. */
+  isScreenSharing: boolean;
   /** Callback function to start recording. */
   onStartRecording: () => void;
   /** Callback function to stop recording. */
@@ -27,6 +30,8 @@ interface ControlPanelProps {
   onResetSession: () => void;
   /** Callback function to toggle video enablement. Receives a boolean indicating the new desired state. */
   onToggleVideo: (enable: boolean) => void;
+  /** Callback function to toggle screen sharing. Receives a boolean indicating the new desired state. */
+  onToggleScreenShare: (enable: boolean) => void;
   selectedPersonaId: string;
   onPersonaChange: (personaId: string) => void;
 }
@@ -57,10 +62,12 @@ const ControlPanel: React.FC<ControlPanelProps> = React.memo(({
   isInitialized,
   apiKeyMissing,
   isVideoEnabled,
+  isScreenSharing,
   onStartRecording,
   onStopRecording,
   onResetSession,
   onToggleVideo,
+  onToggleScreenShare,
   selectedPersonaId,
   onPersonaChange,
 }) => {
@@ -159,6 +166,19 @@ const ControlPanel: React.FC<ControlPanelProps> = React.memo(({
           onChange={onToggleVideo}
           disabled={isDisabledBySystem}
           ariaLabel={isVideoEnabled ? 'Turn video off' : 'Turn video on'}
+        />
+      </div>
+      {/* Gooey Screen Share Toggle Row */}
+      <div className="flex items-center justify-between w-full py-2">
+        <span className={`font-semibold text-base select-none transition-colors duration-300 ${isScreenSharing ? 'text-[var(--color-accent-red)]' : 'text-[var(--color-text-muted)]'}`}
+          >
+          {isScreenSharing ? 'Screen Share On' : 'Screen Share Off'}
+        </span>
+        <GooeyScreenShareToggle
+          checked={isScreenSharing}
+          onChange={onToggleScreenShare}
+          disabled={isDisabledBySystem}
+          ariaLabel={isScreenSharing ? 'Stop screen sharing' : 'Start screen sharing'}
         />
       </div>
     </div>

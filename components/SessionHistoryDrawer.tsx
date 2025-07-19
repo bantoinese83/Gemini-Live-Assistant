@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import HoverVideoPlayer from 'react-hover-video-player';
 import type { SupabaseSession } from '../types';
-import { Trash2, Volume2, MessageSquare } from 'lucide-react';
+import { Trash2, Volume2, MessageSquare, Download } from 'lucide-react';
 
 interface SessionHistoryDrawerProps {
   open: boolean;
@@ -12,6 +12,7 @@ interface SessionHistoryDrawerProps {
   thumbnailLoading: { [sessionId: string]: boolean };
   onSessionClick: (session: SupabaseSession) => void;
   onDeleteSession: (sessionId: string) => void;
+  onDownloadSession?: (session: SupabaseSession) => void;
   onClose: () => void;
   hasMoreSessions: boolean;
   isFetchingMore?: boolean;
@@ -27,6 +28,7 @@ const SessionHistoryDrawer: React.FC<SessionHistoryDrawerProps> = ({
   thumbnailLoading,
   onSessionClick,
   onDeleteSession,
+  onDownloadSession,
   onClose,
   hasMoreSessions,
   isFetchingMore = false,
@@ -287,15 +289,28 @@ const SessionHistoryDrawer: React.FC<SessionHistoryDrawerProps> = ({
                       </button>
                     </div>
                   ) : (
-                    <button
-                      className="p-2 rounded-lg bg-red-500 text-white text-xs font-semibold shadow hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-400/50 ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={e => { e.stopPropagation(); setPendingDeleteId(session.id); setDeleteError(null); }}
-                      onKeyDown={e => handleKeyDown(e, () => { setPendingDeleteId(session.id); setDeleteError(null); })}
-                      aria-label="Delete session"
-                      title="Delete session"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    <div className="flex items-center gap-1 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {onDownloadSession && (
+                        <button
+                          className="p-2 rounded-lg bg-[var(--color-accent-blue)] text-white text-xs font-semibold shadow hover:bg-[var(--color-accent-blue-hover)] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-blue)]/50"
+                          onClick={e => { e.stopPropagation(); onDownloadSession(session); }}
+                          onKeyDown={e => handleKeyDown(e, () => { onDownloadSession(session); })}
+                          aria-label="Download session"
+                          title="Download session"
+                        >
+                          <Download size={16} />
+                        </button>
+                      )}
+                      <button
+                        className="p-2 rounded-lg bg-red-500 text-white text-xs font-semibold shadow hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-400/50"
+                        onClick={e => { e.stopPropagation(); setPendingDeleteId(session.id); setDeleteError(null); }}
+                        onKeyDown={e => handleKeyDown(e, () => { setPendingDeleteId(session.id); setDeleteError(null); })}
+                        aria-label="Delete session"
+                        title="Delete session"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   ))}
                 </div>
                 {deleteError && pendingDeleteId === session.id && (
