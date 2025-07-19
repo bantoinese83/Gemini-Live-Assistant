@@ -57,9 +57,6 @@ const App: React.FC = () => {
   const [voiceSettings, setVoiceSettings] = useState<VoiceSettings>({
     voiceId: 'Orus', // Default voice from official Gemini Live API
     languageCode: 'en-US', // Default language
-    speechRate: 1.0, // UI only
-    pitch: 0, // UI only
-    volume: 1.0, // UI only
   });
   
   const [localIsVideoEnabled, setLocalIsVideoEnabled] = useState<boolean>(true);

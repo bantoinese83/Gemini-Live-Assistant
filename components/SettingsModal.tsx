@@ -5,7 +5,6 @@ import {
   Volume2, 
   Globe, 
   Mic, 
-  Headphones, 
   Languages, 
   Save,
   RotateCcw,
@@ -63,16 +62,10 @@ export const AVAILABLE_LANGUAGES = [
 ];
 
 // Settings interface for Gemini Live API
-// Note: Only voiceName and languageCode are supported by the API
-// Voice parameters like speechRate, pitch, volume are not supported in Live API
+// Only voiceName and languageCode are supported by the API
 export interface VoiceSettings {
   voiceId: string;
   languageCode: string;
-  // Note: speechRate, pitch, volume are not supported by Gemini Live API
-  // These are kept for UI consistency but not sent to the API
-  speechRate: number; // 0.25 to 4.0 (UI only)
-  pitch: number; // -20.0 to 20.0 (UI only)
-  volume: number; // 0.0 to 1.0 (UI only)
 }
 
 interface SettingsModalProps {
@@ -138,18 +131,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
   const handleLanguageChange = (languageCode: string) => {
     setSettings(prev => ({ ...prev, languageCode }));
-  };
-
-  const handleSpeechRateChange = (value: number) => {
-    setSettings(prev => ({ ...prev, speechRate: value }));
-  };
-
-  const handlePitchChange = (value: number) => {
-    setSettings(prev => ({ ...prev, pitch: value }));
-  };
-
-  const handleVolumeChange = (value: number) => {
-    setSettings(prev => ({ ...prev, volume: value }));
   };
 
   if (!open) return null;
@@ -251,87 +232,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
             </div>
           </div>
 
-          {/* Voice Parameters (UI Only) */}
-          <div className="mt-8 space-y-6">
-            <div className="flex items-center gap-2">
-              <Headphones className="w-5 h-5 text-[var(--color-accent-yellow)]" />
-              <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">Voice Parameters</h3>
-              <span className="px-2 py-1 text-xs bg-[var(--color-accent-yellow)]/10 text-[var(--color-accent-yellow)] rounded-full border border-[var(--color-accent-yellow)]/20">
-                UI Only
-              </span>
-            </div>
-            <p className="text-sm text-[var(--color-text-secondary)]">
-              Note: These parameters are for UI display only. The Gemini Live API only supports voice selection and language configuration.
-            </p>
-            
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Speech Rate */}
-              <div className="space-y-3">
-                <label className="block text-sm font-medium text-[var(--color-text-secondary)]">
-                  Speech Rate: {settings.speechRate}x
-                </label>
-                <input
-                  type="range"
-                  min="0.25"
-                  max="4.0"
-                  step="0.25"
-                  value={settings.speechRate}
-                  onChange={(e) => handleSpeechRateChange(parseFloat(e.target.value))}
-                  className="w-full h-2 bg-[var(--color-background-tertiary)] rounded-lg appearance-none cursor-pointer slider"
-                  disabled={isRecording}
-                />
-                <div className="flex justify-between text-xs text-[var(--color-text-muted)]">
-                  <span>Slow</span>
-                  <span>Normal</span>
-                  <span>Fast</span>
-                </div>
-              </div>
 
-              {/* Pitch */}
-              <div className="space-y-3">
-                <label className="block text-sm font-medium text-[var(--color-text-secondary)]">
-                  Pitch: {settings.pitch > 0 ? '+' : ''}{settings.pitch}
-                </label>
-                <input
-                  type="range"
-                  min="-20"
-                  max="20"
-                  step="1"
-                  value={settings.pitch}
-                  onChange={(e) => handlePitchChange(parseInt(e.target.value))}
-                  className="w-full h-2 bg-[var(--color-background-tertiary)] rounded-lg appearance-none cursor-pointer slider"
-                  disabled={isRecording}
-                />
-                <div className="flex justify-between text-xs text-[var(--color-text-muted)]">
-                  <span>Low</span>
-                  <span>Normal</span>
-                  <span>High</span>
-                </div>
-              </div>
-
-              {/* Volume */}
-              <div className="space-y-3">
-                <label className="block text-sm font-medium text-[var(--color-text-secondary)]">
-                  Volume: {Math.round(settings.volume * 100)}%
-                </label>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.1"
-                  value={settings.volume}
-                  onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
-                  className="w-full h-2 bg-[var(--color-background-tertiary)] rounded-lg appearance-none cursor-pointer slider"
-                  disabled={isRecording}
-                />
-                <div className="flex justify-between text-xs text-[var(--color-text-muted)]">
-                  <span>Quiet</span>
-                  <span>Normal</span>
-                  <span>Loud</span>
-                </div>
-              </div>
-            </div>
-          </div>
 
           {/* Recording Warning */}
           {isRecording && (
