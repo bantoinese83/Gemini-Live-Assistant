@@ -4,7 +4,9 @@ An advanced AI-powered voice, video, and screen sharing live assistant using Goo
 
 ## 🎥 Demo
 
-Watch the Gemini Live Assistant in action: [`gla-sr.mov`](gla-sr.mov)
+Watch the Gemini Live Assistant in action:
+
+![Demo Video](gla-sr.mov)
 
 ---
 
@@ -129,7 +131,7 @@ flowchart TD
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/yourusername/Gemini-Live-Assistant.git
+   git clone https://github.com/bantoinese83/Gemini-Live-Assistant.git
    cd Gemini-Live-Assistant
    ```
 
