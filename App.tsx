@@ -1060,10 +1060,10 @@ const App: React.FC = () => {
           <section className={`flex-grow p-3 sm:p-4 lg:p-6 flex flex-col space-y-4 overflow-y-auto lg:overflow-hidden h-full pb-4 ${TRANSITION_MEDIUM}`}>
             {/* Video and AI Bot Visualizer Area */}
             <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 min-h-0 md:h-[40%] md:max-h-[300px] lg:h-[45%] lg:max-h-[350px] xl:max-h-[400px] ${TRANSITION_MEDIUM}`}>
-              <div className={`w-full h-full bg-[var(--color-background-secondary)] ${BORDER_RADIUS_LG} shadow-xl overflow-hidden aspect-video md:aspect-auto`}>
+              <div className={`w-full h-full bg-[var(--color-background-secondary)] ${BORDER_RADIUS_LG} shadow-xl overflow-hidden aspect-video md:aspect-auto hover-lift`}>
                 <VideoPreview mediaStream={mediaStream} isVideoEnabled={localIsVideoEnabled} />
               </div>
-              <div className={`w-full h-full bg-[var(--color-background-secondary)] ${BORDER_RADIUS_LG} shadow-xl overflow-hidden aspect-square md:aspect-auto`}>
+              <div className={`w-full h-full bg-[var(--color-background-secondary)] ${BORDER_RADIUS_LG} shadow-xl overflow-hidden aspect-square md:aspect-auto hover-lift`}>
                 <AIBotVisualizer 
                   audioContext={outputAudioContext} 
                   sourceNode={outputGainNode}

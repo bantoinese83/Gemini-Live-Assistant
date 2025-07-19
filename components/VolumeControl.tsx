@@ -104,7 +104,7 @@ const VolumeControl: React.FC<VolumeControlProps> = React.memo(({ label, gainNod
   const meterDb = meter > 0 ? (20 * Math.log10(meter)).toFixed(1) : '-∞';
 
   return (
-    <div className="mb-3 px-1">
+    <div className="mb-3 px-1 p-3 rounded-lg bg-[var(--color-background-tertiary)] hover-lift transition-all duration-200">
       <label htmlFor={sliderId} className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">
         {label} Volume: {Math.round(volume * 100)}%
       </label>
@@ -118,7 +118,7 @@ const VolumeControl: React.FC<VolumeControlProps> = React.memo(({ label, gainNod
           value={volume}
           onChange={handleVolumeChange}
           disabled={!gainNode}
-          className={`w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${FOCUS_RING_BASE} ${FOCUS_RING_OFFSET_LIGHT} focus:ring-[var(--color-accent-teal)] ${TRANSITION_FAST}`}
+          className={`w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${FOCUS_RING_BASE} ${FOCUS_RING_OFFSET_LIGHT} focus:ring-[var(--color-accent-teal)] ${TRANSITION_FAST} hover:bg-slate-500`}
           style={sliderStyle}
           aria-label={`${label} Volume Control`}
           aria-valuemin={0}
