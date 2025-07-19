@@ -783,6 +783,13 @@ export class GeminiLiveAI {
   }
 
   /**
+   * Gets the current screen stream for preview purposes.
+   */
+  public getScreenStream(): MediaStream | null {
+    return this.screenStream;
+  }
+
+  /**
    * Stops audio and video recording and cleans up all associated resources.
    * Notifies UI about the recording state change.
    */

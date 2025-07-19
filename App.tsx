@@ -73,6 +73,7 @@ const App: React.FC = () => {
     setVideoTrackEnabled,
     inputAudioContext,
     isScreenSharing,
+    screenStream,
     startScreenSharing,
     stopScreenSharing,
   } = useGeminiLive(systemInstruction); // Pass current system instruction to the hook
@@ -978,6 +979,7 @@ const App: React.FC = () => {
         onToggleDashboard={() => setShowDashboard(d => !d)}
         showDashboard={showDashboard}
         isScreenSharing={isScreenSharing}
+        screenStream={screenStream}
         onStartScreenSharing={startScreenSharing}
         onStopScreenSharing={stopScreenSharing}
       />

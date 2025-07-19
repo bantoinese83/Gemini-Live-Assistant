@@ -38,6 +38,7 @@ export interface UseGeminiLiveReturn {
   modelTranscriptIsFinal: boolean;
   setVideoTrackEnabled?: (enable: boolean) => void;
   isScreenSharing: boolean;
+  screenStream: MediaStream | null;
   startScreenSharing: () => Promise<void>;
   stopScreenSharing: () => void;
 }
