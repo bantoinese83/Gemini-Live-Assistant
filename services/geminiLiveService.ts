@@ -755,10 +755,21 @@ export async function analyzeSessionWithGemini({
   started_at?: string | number | Date;
   ended_at?: string | number | Date;
 }): Promise<SessionAnalysisResult> {
+  console.log('analyzeSessionWithGemini called with:', {
+    hasVideoUrl: !!videoUrl,
+    hasAudioUrl: !!audioUrl,
+    transcriptCount: transcripts.length,
+    sessionId,
+    persona,
+    hasSystemInstruction: !!systemInstruction
+  });
+
   // --- 1. Prepare transcript text ---
   const transcriptText = transcripts
     .map(t => `${t.speaker === 'user' ? 'User' : 'AI'}: ${t.text}`)
     .join('\n');
+
+  console.log('Transcript text prepared:', transcriptText.substring(0, 200) + '...');
 
   // --- 1b. Calculate session duration (in seconds) ---
   let duration = 0;
@@ -793,12 +804,15 @@ export async function analyzeSessionWithGemini({
     } catch { }
   }
 
+  console.log('Session duration calculated:', duration, 'seconds');
+
   // --- 2. Prepare Gemini API client with API key ---
-  const apiKey = process.env.API_KEY || (window as any).GEMINI_API_KEY || '';
+  const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY || '';
   if (!apiKey) {
-    console.error('Gemini API key is missing. Set process.env.API_KEY or window.GEMINI_API_KEY.');
+    console.error('Gemini API key is missing. Set process.env.API_KEY or process.env.GEMINI_API_KEY.');
     throw new Error('Gemini API key is missing. Please set it in your environment.');
   }
+  console.log('API key found, creating Gemini client...');
   const ai = new GoogleGenAI({ apiKey });
 
   // --- 3. Compose prompt ---
@@ -843,6 +857,7 @@ export async function analyzeSessionWithGemini({
   let filePart: any = null;
   let mimeType = '';
   if (typeof videoUrl === 'string') {
+    console.log('Processing video URL:', videoUrl);
     if (videoUrl.startsWith('http') && videoUrl.includes('youtube.com')) {
       filePart = {
         fileData: {
@@ -853,34 +868,66 @@ export async function analyzeSessionWithGemini({
     } else {
       // Assume direct video file (webm/mp4)
       mimeType = videoUrl.endsWith('.mp4') ? 'video/mp4' : 'video/webm';
+      console.log('Uploading video file to Gemini, mimeType:', mimeType);
       // Upload to Gemini File API
       const videoBlob = await fetch(videoUrl).then(r => r.blob());
+      console.log('Video blob size:', videoBlob.size, 'bytes');
+      
+      // Check if video file is too small (likely corrupted or empty)
+      if (videoBlob.size < 1000) { // Less than 1KB
+        console.warn('Video file is too small, likely corrupted. Falling back to transcript-only analysis.');
+        contents = [{ text: prompt }];
+      } else {
+        const myfile = await ai.files.upload({
+          file: new File([videoBlob], 'session-video', { type: mimeType }),
+          config: { mimeType },
+        });
+        if (!myfile.name) {
+          throw new Error('Gemini file upload did not return a file name.');
+        }
+        console.log('Video file uploaded successfully:', myfile.name);
+        try {
+          await waitForGeminiFileActive(ai, myfile.name);
+        } catch (statusErr) {
+          console.warn('File status check failed, but proceeding with analysis:', statusErr);
+          // Continue with analysis even if status check fails
+        }
+        filePart = createPartFromUri(myfile.uri ?? '', myfile.mimeType ?? '');
+        contents = [filePart, { text: prompt }];
+      }
+    }
+  } else if (typeof audioUrl === 'string') {
+    console.log('Processing audio URL:', audioUrl);
+    // Audio file
+    mimeType = audioUrl.endsWith('.mp3') ? 'audio/mp3' : 'audio/mpeg';
+    console.log('Uploading audio file to Gemini, mimeType:', mimeType);
+    const audioBlob = await fetch(audioUrl).then(r => r.blob());
+    console.log('Audio blob size:', audioBlob.size, 'bytes');
+    
+    // Check if audio file is too small (likely corrupted or empty)
+    if (audioBlob.size < 1000) { // Less than 1KB
+      console.warn('Audio file is too small, likely corrupted. Falling back to transcript-only analysis.');
+      contents = [{ text: prompt }];
+    } else {
       const myfile = await ai.files.upload({
-        file: new File([videoBlob], 'session-video', { type: mimeType }),
+        file: new File([audioBlob], 'session-audio', { type: mimeType }),
         config: { mimeType },
       });
       if (!myfile.name) {
         throw new Error('Gemini file upload did not return a file name.');
       }
-      await waitForGeminiFileActive(ai, myfile.name);
+      console.log('Audio file uploaded successfully:', myfile.name);
+      try {
+        await waitForGeminiFileActive(ai, myfile.name);
+      } catch (statusErr) {
+        console.warn('Audio file status check failed, but proceeding with analysis:', statusErr);
+        // Continue with analysis even if status check fails
+      }
       filePart = createPartFromUri(myfile.uri ?? '', myfile.mimeType ?? '');
       contents = [filePart, { text: prompt }];
     }
-  } else if (typeof audioUrl === 'string') {
-    // Audio file
-    mimeType = audioUrl.endsWith('.mp3') ? 'audio/mp3' : 'audio/mpeg';
-    const audioBlob = await fetch(audioUrl).then(r => r.blob());
-    const myfile = await ai.files.upload({
-      file: new File([audioBlob], 'session-audio', { type: mimeType }),
-      config: { mimeType },
-    });
-    if (!myfile.name) {
-      throw new Error('Gemini file upload did not return a file name.');
-    }
-    await waitForGeminiFileActive(ai, myfile.name);
-    filePart = createPartFromUri(myfile.uri ?? '', myfile.mimeType ?? '');
-    contents = [filePart, { text: prompt }];
   } else {
+    console.log('No video or audio URL provided, using transcript only');
     // Transcript only
     contents = [{ text: prompt }];
   }
@@ -928,6 +975,8 @@ export async function analyzeSessionWithGemini({
   // --- 6. Call Gemini API for structured output ---
   let result: SessionAnalysisResult | null = null;
   try {
+    console.log('Calling Gemini API with contents length:', contents.length);
+    console.log('Prompt being sent:', prompt.substring(0, 200) + '...');
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
       contents,
@@ -936,15 +985,25 @@ export async function analyzeSessionWithGemini({
         responseSchema,
       },
     });
+    console.log('Gemini API response received:', response);
+    console.log('Response text length:', response.text?.length || 0);
+    
     // Parse JSON result
-    result = typeof response.text === 'string' ? JSON.parse(response.text) : response.text;
+    if (typeof response.text === 'string') {
+      console.log('Parsing JSON response...');
+      result = JSON.parse(response.text);
+      console.log('Successfully parsed analysis result:', result);
+    } else {
+      console.log('Response is already parsed:', response.text);
+      result = response.text;
+    }
   } catch (err) {
+    console.error('Gemini analysis failed with error:', err);
     // Fallback: transcript-only analysis
-    console.error('Gemini analysis failed, falling back to transcript-only:', err);
     if (contents.length > 1) {
-      // Try again with transcript only
+      console.log('Attempting fallback with transcript-only analysis...');
       try {
-        const response = await ai.models.generateContent({
+        const fallbackResponse = await ai.models.generateContent({
           model: 'gemini-2.5-flash',
           contents: [{ text: prompt }],
           config: {
@@ -952,50 +1011,102 @@ export async function analyzeSessionWithGemini({
             responseSchema,
           },
         });
-        result = typeof response.text === 'string' ? JSON.parse(response.text) : response.text;
-      } catch (err2) {
-        throw new Error('Gemini analysis failed: ' + err2);
+        console.log('Fallback response received:', fallbackResponse);
+        result = typeof fallbackResponse.text === 'string' ? JSON.parse(fallbackResponse.text) : fallbackResponse.text;
+        console.log('Fallback analysis result:', result);
+      } catch (fallbackErr) {
+        console.error('Fallback analysis also failed:', fallbackErr);
+        throw fallbackErr;
       }
     } else {
-      throw new Error('Gemini analysis failed: ' + err);
+      throw err;
     }
   }
 
-  // --- 7. Persist analysis result in Supabase (sessions.metadata.analysis) ---
+  // --- 7. Save analysis to database if sessionId provided ---
   if (sessionId && result) {
     try {
-      // Update the session row with analysis in metadata
-      await supabase.from('sessions').update({
-        metadata: {
-          persona: persona || null,
-          systemInstruction: systemInstruction || null,
-          analysis: result,
-        },
-      }).eq('id', sessionId);
-    } catch (e) {
-      console.error('Failed to persist analysis in Supabase:', e);
+      console.log('Saving analysis to database for session:', sessionId);
+      const { error } = await supabase
+        .from('sessions')
+        .update({
+          metadata: {
+            analysis: result,
+            lastAnalyzed: new Date().toISOString(),
+          },
+        })
+        .eq('id', sessionId);
+      
+      if (error) {
+        console.error('Failed to save analysis to database:', error);
+      } else {
+        console.log('Analysis saved to database successfully');
+      }
+    } catch (saveErr) {
+      console.error('Error saving analysis to database:', saveErr);
     }
   }
 
-  // --- 8. Return result ---
-  if (!result) {
-    throw new Error('No analysis result from Gemini');
-  }
+  console.log('analyzeSessionWithGemini completed successfully');
   return result;
 }
 
 // Helper: Wait for Gemini file to become ACTIVE
 async function waitForGeminiFileActive(ai: any, fileName: string, maxWaitMs = 10000, pollMs = 500) {
   const start = Date.now();
+  let lastError = null;
+  
   while (Date.now() - start < maxWaitMs) {
+    try {
+      const file = await ai.files.get(fileName);
+      console.log('File status check:', fileName, file);
+      
+      // Handle null/undefined file response
+      if (!file) {
+        console.warn('File not found, retrying...', fileName);
+        await new Promise(res => setTimeout(res, pollMs));
+        continue;
+      }
+      
+      // Check if file has a state property
+      if (file.state === 'ACTIVE') {
+        console.log('File is now ACTIVE:', fileName);
+        return file;
+      }
+      if (file.state === 'FAILED') {
+        throw new Error('Gemini file upload failed: ' + (file.error?.message || 'Unknown error'));
+      }
+      if (file.state === 'PROCESSING') {
+        console.log('File is still processing:', fileName);
+        await new Promise(res => setTimeout(res, pollMs));
+        continue;
+      }
+      
+      // If file exists but doesn't have a state, assume it's ready
+      console.log('File exists but no state, assuming ready:', fileName);
+      return file;
+      
+    } catch (err) {
+      lastError = err;
+      console.warn('Error checking file status, retrying...', err);
+      await new Promise(res => setTimeout(res, pollMs));
+    }
+  }
+  
+  // If we get here, the file didn't become active in time
+  console.error('File status check failed after timeout:', fileName, lastError);
+  
+  // Try one more time to get the file without checking state
+  try {
     const file = await ai.files.get(fileName);
-    if (file.state === 'ACTIVE') {
+    if (file) {
+      console.log('File found on final attempt, proceeding:', fileName);
       return file;
     }
-    if (file.state === 'FAILED') {
-      throw new Error('Gemini file upload failed: ' + (file.errorMessage || 'Unknown error'));
-    }
-    await new Promise(res => setTimeout(res, pollMs));
+  } catch (finalErr) {
+    console.error('Final file check failed:', finalErr);
   }
+  
   throw new Error('Gemini file did not become ACTIVE in time. Please try again.');
 }
+

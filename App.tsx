@@ -160,19 +160,33 @@ const App: React.FC = () => {
       echoCancellation: true,
       autoGainControl: true
     };
+    
+    console.log('Getting combined media stream, video enabled:', videoEnabled);
+    
     if (videoEnabled) {
       // Get video and audio streams separately
+      console.log('Requesting video stream...');
       const videoStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      console.log('Video stream obtained, tracks:', videoStream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled })));
+      
+      console.log('Requesting audio stream...');
       const audioStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: audioConstraints });
+      console.log('Audio stream obtained, tracks:', audioStream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled })));
+      
       // Combine tracks
       const combinedStream = new MediaStream([
         ...videoStream.getVideoTracks(),
         ...audioStream.getAudioTracks(),
       ]);
+      
+      console.log('Combined stream created with tracks:', combinedStream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled })));
+      
       return { combinedStream, videoStream };
     } else {
       // Audio only
+      console.log('Requesting audio-only stream...');
       const audioStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints });
+      console.log('Audio-only stream obtained, tracks:', audioStream.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled })));
       return { combinedStream: audioStream, videoStream: null };
     }
   };
@@ -199,18 +213,49 @@ const App: React.FC = () => {
       // Start MediaRecorder with correct stream
       recordedChunksRef.current = [];
       let recorder;
-      try {
-        recorder = new MediaRecorder(combinedStream);
-      } catch (e) {
-        recorder = new MediaRecorder(combinedStream, { mimeType: 'video/webm' });
+      
+      // Try to find a supported MIME type for video recording
+      const supportedMimeTypes = [
+        'video/webm;codecs=vp9,opus',
+        'video/webm;codecs=vp8,opus',
+        'video/webm',
+        'video/mp4',
+        'video/ogg;codecs=theora,vorbis'
+      ];
+      
+      let mimeType = null;
+      for (const type of supportedMimeTypes) {
+        if (MediaRecorder.isTypeSupported(type)) {
+          mimeType = type;
+          break;
+        }
       }
+      
+      console.log('Using MIME type for recording:', mimeType);
+      
+      try {
+        if (mimeType) {
+          recorder = new MediaRecorder(combinedStream, { mimeType });
+        } else {
+          recorder = new MediaRecorder(combinedStream);
+        }
+      } catch (e) {
+        console.error('Failed to create MediaRecorder with MIME type:', e);
+        // Fallback to default
+        recorder = new MediaRecorder(combinedStream);
+      }
+      
       mediaRecorderRef.current = recorder;
       recorder.ondataavailable = (event) => {
+        console.log('MediaRecorder data available:', event.data.size, 'bytes');
         if (event.data.size > 0) {
           recordedChunksRef.current.push(event.data);
         }
       };
-      recorder.start();
+      
+      // Start recording with timeslice to get regular chunks
+      recorder.start(1000); // Get chunks every 1 second
+      console.log('MediaRecorder started with timeslice');
       startRecording(localIsVideoEnabled); // use current state
     } catch (err: any) {
       setSaveError('Failed to start session: ' + (err.message || err.toString()));
@@ -308,7 +353,10 @@ const App: React.FC = () => {
         const recorder = mediaRecorderRef.current;
         await new Promise<void>((resolve) => {
           recorder.onstop = () => {
+            console.log('MediaRecorder stopped, creating blob from', recordedChunksRef.current.length, 'chunks');
+            console.log('Chunk sizes:', recordedChunksRef.current.map(chunk => chunk.size));
             const blob = new Blob(recordedChunksRef.current, { type: recorder.mimeType });
+            console.log('Created blob:', blob.size, 'bytes, type:', blob.type);
             videoBlobRef.current = blob;
             resolve();
           };
@@ -511,37 +559,48 @@ const App: React.FC = () => {
 
   // Handler for when a session is selected from history
   const handleSessionClick = async (session: SupabaseSession) => {
+    console.log('Session clicked:', session);
     setSelectedSession(session);
     if (session.video_url) {
       try {
+        console.log('Generating signed URL for video:', session.video_url);
         const { data, error } = await supabase.storage
           .from('session-videos')
           .createSignedUrl(session.video_url, 60 * 60);
         if (!error && data?.signedUrl) {
+          console.log('Video signed URL generated:', data.signedUrl);
           setPlaybackVideoUrl(data.signedUrl);
         } else {
+          console.error('Failed to generate video signed URL:', error);
           setPlaybackVideoUrl(null);
         }
-      } catch {
+      } catch (err) {
+        console.error('Error generating video signed URL:', err);
         setPlaybackVideoUrl(null);
       }
     } else {
+      console.log('No video URL for session');
       setPlaybackVideoUrl(null);
     }
     if (session.audio_url) {
       try {
+        console.log('Generating signed URL for audio:', session.audio_url);
         const { data, error } = await supabase.storage
           .from('session_audio')
           .createSignedUrl(session.audio_url, 60 * 60);
         if (!error && data?.signedUrl) {
+          console.log('Audio signed URL generated:', data.signedUrl);
           setPlaybackAudioUrl(data.signedUrl);
         } else {
+          console.error('Failed to generate audio signed URL:', error);
           setPlaybackAudioUrl(null);
         }
-      } catch {
+      } catch (err) {
+        console.error('Error generating audio signed URL:', err);
         setPlaybackAudioUrl(null);
       }
     } else {
+      console.log('No audio URL for session');
       setPlaybackAudioUrl(null);
     }
     setShowPlayback(true);
@@ -549,6 +608,7 @@ const App: React.FC = () => {
     // Fetch transcripts for the session
     let transcripts: SupabaseTranscript[] = [];
     try {
+      console.log('Fetching transcripts for session:', session.id);
       const { data, error } = await supabase
         .from('transcripts')
         .select('*')
@@ -556,28 +616,89 @@ const App: React.FC = () => {
         .order('timestamp_ms', { ascending: true });
       if (error) throw error;
       transcripts = SupabaseTranscriptArraySchema.parse(data || []);
-    } catch {
+      console.log('Transcripts fetched:', transcripts.length, 'entries');
+    } catch (err) {
+      console.error('Error fetching transcripts:', err);
       transcripts = [];
     }
     setSelectedTranscripts(transcripts);
     if (sessionAnalysisMap[session.id]) {
+      console.log('Using cached analysis for session:', session.id);
       setAnalysisLoading(false);
       return;
     }
     const analysisFromDb = session.metadata?.analysis;
     if (analysisFromDb) {
+      console.log('Using analysis from database for session:', session.id);
       setSessionAnalysisMap(prev => ({ ...prev, [session.id]: analysisFromDb }));
       setAnalysisLoading(false);
       return;
     }
+    
+    // Check if we have transcripts to analyze
+    if (transcripts.length === 0) {
+      console.warn('No transcripts found for session:', session.id);
+      setToast({ 
+        message: 'No transcripts found for this session. Analysis requires conversation data.', 
+        type: 'error' 
+      });
+      setAnalysisLoading(false);
+      return;
+    }
+    
+    console.log('Transcript content preview:', transcripts.map(t => `${t.speaker}: ${t.text}`).join('\n').substring(0, 300) + '...');
+    
     try {
-      const videoUrl = session.video_url || undefined;
-      const audioUrl = session.audio_url || undefined;
+      // Generate signed URLs for analysis
+      let analysisVideoUrl: string | undefined = undefined;
+      let analysisAudioUrl: string | undefined = undefined;
+      
+      if (session.video_url) {
+        try {
+          console.log('Generating signed URL for video analysis:', session.video_url);
+          const { data, error } = await supabase.storage
+            .from('session-videos')
+            .createSignedUrl(session.video_url, 60 * 60);
+          if (!error && data?.signedUrl) {
+            console.log('Video signed URL for analysis generated:', data.signedUrl);
+            analysisVideoUrl = data.signedUrl;
+          } else {
+            console.error('Failed to generate video signed URL for analysis:', error);
+          }
+        } catch (err) {
+          console.error('Error generating video signed URL for analysis:', err);
+        }
+      }
+      
+      if (session.audio_url) {
+        try {
+          console.log('Generating signed URL for audio analysis:', session.audio_url);
+          const { data, error } = await supabase.storage
+            .from('session_audio')
+            .createSignedUrl(session.audio_url, 60 * 60);
+          if (!error && data?.signedUrl) {
+            console.log('Audio signed URL for analysis generated:', data.signedUrl);
+            analysisAudioUrl = data.signedUrl;
+          } else {
+            console.error('Failed to generate audio signed URL for analysis:', error);
+          }
+        } catch (err) {
+          console.error('Error generating audio signed URL for analysis:', err);
+        }
+      }
+      
       const persona = session.persona;
       const systemInstruction = session.metadata?.systemInstruction;
+      console.log('Starting session analysis for session:', session.id, {
+        analysisVideoUrl,
+        analysisAudioUrl,
+        persona,
+        transcriptCount: transcripts.length,
+        hasSystemInstruction: !!systemInstruction
+      });
       const analysis = await analyzeSessionWithGemini({
-        videoUrl,
-        audioUrl,
+        videoUrl: analysisVideoUrl,
+        audioUrl: analysisAudioUrl,
         transcripts,
         sessionId: session.id,
         persona,
@@ -585,9 +706,16 @@ const App: React.FC = () => {
         started_at: session.started_at,
         ended_at: session.ended_at || undefined,
       });
+      console.log('Session analysis completed successfully:', analysis);
       setSessionAnalysisMap(prev => ({ ...prev, [session.id]: analysis }));
+      setAnalysisLoading(false);
     } catch (e) {
-      // Optionally handle error
+      console.error('Session analysis failed:', e);
+      // Show error to user via toast
+      setToast({ 
+        message: 'Failed to analyze session: ' + (e instanceof Error ? e.message : 'Unknown error'), 
+        type: 'error' 
+      });
     } finally {
       setAnalysisLoading(false);
     }
@@ -598,13 +726,56 @@ const App: React.FC = () => {
     if (!selectedSession) return;
     setAnalysisLoading(true);
     try {
-      const videoUrl = selectedSession.video_url || undefined;
-      const audioUrl = selectedSession.audio_url || undefined;
+      // Generate signed URLs for analysis
+      let analysisVideoUrl: string | undefined = undefined;
+      let analysisAudioUrl: string | undefined = undefined;
+      
+      if (selectedSession.video_url) {
+        try {
+          console.log('Generating signed URL for video re-analysis:', selectedSession.video_url);
+          const { data, error } = await supabase.storage
+            .from('session-videos')
+            .createSignedUrl(selectedSession.video_url, 60 * 60);
+          if (!error && data?.signedUrl) {
+            console.log('Video signed URL for re-analysis generated:', data.signedUrl);
+            analysisVideoUrl = data.signedUrl;
+          } else {
+            console.error('Failed to generate video signed URL for re-analysis:', error);
+          }
+        } catch (err) {
+          console.error('Error generating video signed URL for re-analysis:', err);
+        }
+      }
+      
+      if (selectedSession.audio_url) {
+        try {
+          console.log('Generating signed URL for audio re-analysis:', selectedSession.audio_url);
+          const { data, error } = await supabase.storage
+            .from('session_audio')
+            .createSignedUrl(selectedSession.audio_url, 60 * 60);
+          if (!error && data?.signedUrl) {
+            console.log('Audio signed URL for re-analysis generated:', data.signedUrl);
+            analysisAudioUrl = data.signedUrl;
+          } else {
+            console.error('Failed to generate audio signed URL for re-analysis:', error);
+          }
+        } catch (err) {
+          console.error('Error generating audio signed URL for re-analysis:', err);
+        }
+      }
+      
       const persona = selectedSession.persona;
       const systemInstruction = selectedSession.metadata?.systemInstruction;
+      console.log('Starting re-analysis for session:', selectedSession.id, {
+        analysisVideoUrl,
+        analysisAudioUrl,
+        persona,
+        transcriptCount: selectedTranscripts.length,
+        hasSystemInstruction: !!systemInstruction
+      });
       const analysis = await analyzeSessionWithGemini({
-        videoUrl,
-        audioUrl,
+        videoUrl: analysisVideoUrl,
+        audioUrl: analysisAudioUrl,
         transcripts: selectedTranscripts,
         sessionId: selectedSession.id,
         persona,
@@ -612,9 +783,15 @@ const App: React.FC = () => {
         started_at: selectedSession.started_at,
         ended_at: selectedSession.ended_at || undefined,
       });
+      console.log('Re-analysis completed successfully:', analysis);
       setSessionAnalysisMap(prev => ({ ...prev, [selectedSession.id]: analysis }));
     } catch (e) {
-      // Optionally show error to user
+      console.error('Re-analysis failed:', e);
+      // Show error to user via toast
+      setToast({ 
+        message: 'Failed to re-analyze session: ' + (e instanceof Error ? e.message : 'Unknown error'), 
+        type: 'error' 
+      });
     } finally {
       setAnalysisLoading(false);
     }
