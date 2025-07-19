@@ -231,7 +231,7 @@ body {
   align-items: center;
   position: absolute;
   inset: 0 3px;
-  background: var(--bot-face-bg);
+  background: rgba(32, 33, 36, 0.8); /* Semi-transparent dark background */
   translate: var(--fx) 0;
   border-radius: 4px; /* Maintain specific small radius */
   padding: 4px 4px 2px 4px;
@@ -255,27 +255,32 @@ body {
   display: flex;
   height: 8px;
   gap: 6px;
+  align-items: center;
+  justify-content: center;
 }
 
 .ai-bot .head .face .eyes:before, .ai-bot .head .face .eyes:after {
   content: '';
-  width: 5px;
-  height: 8px;
-  border-radius: 1px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
   translate: var(--erx) 0;
   transition: scale 0.05s linear, translate 0.1s linear;
+  display: block;
 }
 
 .ai-bot .head .face .eyes:before {
   scale: 1 var(--elh);
   filter: drop-shadow(0 0 2px var(--bot-accent-blue));
-  background: repeating-linear-gradient(to bottom, var(--bot-body-color), var(--bot-body-color) .25px, transparent .25px, transparent .6px), linear-gradient(to bottom, var(--bot-accent-blue), transparent 60%), var(--bot-accent-blue);
+  background: var(--bot-accent-blue);
+  box-shadow: 0 0 4px var(--bot-accent-blue);
 }
 
 .ai-bot .head .face .eyes:after {
   scale: 1 var(--erh);
   filter: drop-shadow(0 0 2px var(--bot-accent-green));
-  background: repeating-linear-gradient(to bottom, var(--bot-body-color), var(--bot-body-color) .25px, transparent .25px, transparent .6px), linear-gradient(to bottom, var(--bot-accent-green), transparent 60%), var(--bot-accent-green);
+  background: var(--bot-accent-green);
+  box-shadow: 0 0 4px var(--bot-accent-green);
 }
 
 .ai-bot .head .face .mouth {
