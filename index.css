@@ -47,11 +47,10 @@
 
   /* AI Bot Specific Colors - Google Logo Color Scheme */
   --bot-face-bg: #202124; /* Google Dark Gray for bot face */
-  --bot-body-color: #4285f4; /* Google Blue for main bot body */
-  --bot-accent-primary: var(--color-accent-blue); /* Google Blue for primary features */
-  --bot-accent-secondary: var(--color-accent-green); /* Google Green for secondary features */
-  --bot-accent-red: var(--color-accent-red); /* Google Red for accent elements */
-  --bot-accent-yellow: var(--color-accent-yellow); /* Google Yellow for accent elements */
+  --bot-body-color: #4285f4; /* Google Blue for main body */
+  --bot-accent-primary: #ea4335; /* Google Red for primary features */
+  --bot-accent-secondary: #fbbc05; /* Google Yellow for secondary features */
+  --bot-accent-tertiary: #34a853; /* Google Green for tertiary features */
 }
 
 /* Custom scrollbar */
@@ -159,9 +158,24 @@ body {
   place-items: center;
   width: 100%;
   height: 100%;
-  background-color: var(--color-background-secondary); /* Use themed background */
+  background: linear-gradient(135deg, var(--color-background-secondary) 0%, var(--color-background-primary) 100%);
   padding: 1rem;
   border-radius: var(--radius-lg);
+  position: relative;
+  overflow: hidden;
+}
+
+.ai-bot-container::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: 
+    radial-gradient(circle at 30% 30%, rgba(66, 133, 244, 0.03) 0%, transparent 70%),
+    radial-gradient(circle at 70% 70%, rgba(52, 168, 83, 0.03) 0%, transparent 70%);
+  pointer-events: none;
 }
 
 .ai-bot {
@@ -171,14 +185,8 @@ body {
   position: relative;
   display: grid;
   place-items: center;
-  /* Google colors glow effect - blue base with multicolor accents */
-  box-shadow: 
-    0 4px 32px 0 #4285f455, 
-    0 0 0 4px #4285f455,
-    0 0 0 6px #ea433555, /* Red accent */
-    0 0 0 8px #fbbc0555, /* Yellow accent */
-    0 0 0 10px #34a85355; /* Green accent */
-  filter: drop-shadow(0 0 8px #4285f4cc);
+  box-shadow: 0 4px 32px 0 rgba(66, 133, 244, 0.3), 0 0 0 4px rgba(66, 133, 244, 0.2);
+  filter: drop-shadow(0 0 8px rgba(66, 133, 244, 0.6));
 }
  @media (min-width: 640px) { /* sm breakpoint */
   .ai-bot {
@@ -192,11 +200,12 @@ body {
 }
 
 .ai-bot .head {
-  background: linear-gradient(var(--bot-body-color) 80%, color-mix(in srgb, var(--bot-body-color), black 30%), var(--bot-body-color));
+  background: var(--color-accent-blue);
   border-radius: var(--radius-sm);
   position: absolute;
   width: 28px;
   height: 20px;
+  box-shadow: 0 2px 8px rgba(66, 133, 244, 0.3);
 }
 
 .ai-bot .head:before, .ai-bot .head:after {
@@ -206,14 +215,10 @@ body {
   top: 6px;
   width: 2px;
   height: 8px;
-  background: var(--bot-body-color);
+  background: var(--color-accent-green);
   border-radius: 2px 0 0 2px;
   scale: var(--ealw, 1) 1;
   transition: scale 0.1s ease-out;
-}
-.ai-bot .head:before {
-  background: var(--bot-accent-red); /* Google Red for left ear */
-  filter: drop-shadow(0 0 2px var(--bot-accent-red));
 }
 .ai-bot .head:after {
   right: -4px;
@@ -221,8 +226,7 @@ body {
   border-radius: 0 2px 2px 0;
   scale: var(--earw, 1) 1;
   transition: scale 0.1s ease-out;
-  background: var(--bot-accent-yellow); /* Google Yellow for right ear */
-  filter: drop-shadow(0 0 2px var(--bot-accent-yellow));
+  background: var(--color-accent-yellow);
 }
 
 .ai-bot .head .face {
@@ -231,7 +235,7 @@ body {
   align-items: center;
   position: absolute;
   inset: 0 3px;
-  background: rgba(32, 33, 36, 0.8); /* Semi-transparent dark background */
+  background: var(--bot-face-bg);
   translate: var(--fx) 0;
   border-radius: 4px; /* Maintain specific small radius */
   padding: 4px 4px 2px 4px;
@@ -241,44 +245,44 @@ body {
 
 .ai-bot .head .face:before {
   content: '';
-  background: var(--bot-accent-red); /* Google Red for face border */
+  background: var(--bot-body-color);
   position: absolute;
   height: 1px;
   width: 10px;
   top: -2px;
   border-radius: 2px 2px 0 0;
   mask: radial-gradient(circle at 50% 100%, transparent 45%, black 45%);
-  filter: drop-shadow(0 0 1px var(--bot-accent-red));
 }
 
 .ai-bot .head .face .eyes {
   display: flex;
   height: 8px;
-  align-items: center;
-  justify-content: center;
-  position: relative;
+  gap: 6px;
 }
 
-.ai-bot .head .face .eyes:before {
+.ai-bot .head .face .eyes:before, .ai-bot .head .face .eyes:after {
   content: '';
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+  width: 5px;
+  height:  8px;
+  scale: 1 var(--elh);
+  filter: drop-shadow( 0 0 2px var(--color-accent-yellow));
+  background: repeating-linear-gradient(to bottom, var(--color-accent-yellow), var(--color-accent-yellow) .25px, transparent .25px, transparent .6px), linear-gradient(to bottom, var(--color-accent-yellow), transparent 60%), var(--color-accent-yellow);
+  border-radius: 1px;
   translate: var(--erx) 0;
   transition: scale 0.05s linear, translate 0.1s linear;
-  display: block;
-  scale: 1 var(--elh);
-  filter: drop-shadow(0 0 3px var(--bot-accent-blue));
-  background: var(--bot-accent-blue);
-  box-shadow: 0 0 6px var(--bot-accent-blue);
+}
+
+.ai-bot .head .face .eyes:after {
+  scale: 1 var(--erh);
+  translate: var(--erx) 0;
 }
 
 .ai-bot .head .face .mouth {
   width: 10px;
   height: 2px;
-  background: var(--bot-accent-yellow); /* Google Yellow for mouth */
+  background: var(--color-accent-red);
   border-radius: 0 0 1px 1px;
-  filter: drop-shadow( 0 0 2px var(--bot-accent-yellow));
+  filter: drop-shadow( 0 0 2px var(--color-accent-red));
   scale: var(--mw, 1) var(--mh, 1);
   transition: scale 0.05s linear;
 }
@@ -299,4 +303,6 @@ body {
 .animate-wave3 { animation: waveBar 1.3s 0s infinite cubic-bezier(.4,0,.6,1) alternate; }
 .animate-wave4 { animation: waveBar 1.0s -0.15s infinite cubic-bezier(.4,0,.6,1) alternate; }
 .animate-wave5 { animation: waveBar 1.2s -0.05s infinite cubic-bezier(.4,0,.6,1) alternate; }
-@keyframes waveBar { 0% { height: 0.5rem; } 50% { height: 1.25rem; } 100% { height: 0.5rem; } } 
+@keyframes waveBar { 0% { height: 0.5rem; } 50% { height: 1.25rem; } 100% { height: 0.5rem; } }
+
+/* AI Bot Animation Keyframes - Removed busy animations for cleaner look */ 
