@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { TRANSITION_FAST, FOCUS_RING_BASE, FOCUS_RING_OFFSET_LIGHT } from '../theme';
+import { Volume2, VolumeX, Volume1, Volume } from 'lucide-react';
 
 /**
  * Props for the VolumeControl component.
@@ -24,6 +25,8 @@ const VolumeControl: React.FC<VolumeControlProps> = React.memo(({ label, gainNod
   const [volume, setVolume] = useState(initialVolume);
   // Real-time meter state (0-1)
   const [meter, setMeter] = useState(0);
+  // Previous volume for mute/unmute functionality
+  const [previousVolume, setPreviousVolume] = useState(initialVolume);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const dataArrayRef = useRef<Uint8Array | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -88,27 +91,76 @@ const VolumeControl: React.FC<VolumeControlProps> = React.memo(({ label, gainNod
 
   /** Handles changes from the range input slider. */
   const handleVolumeChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    setVolume(parseFloat(event.target.value));
+    const newVolume = parseFloat(event.target.value);
+    setVolume(newVolume);
+    if (newVolume > 0) {
+      setPreviousVolume(newVolume);
+    }
   },[]);
 
+  /** Handles mute/unmute toggle. */
+  const handleMuteToggle = useCallback(() => {
+    if (volume > 0) {
+      setPreviousVolume(volume);
+      setVolume(0);
+    } else {
+      setVolume(previousVolume);
+    }
+  }, [volume, previousVolume]);
+
+  /** Handles keyboard shortcuts. */
+  const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
+    if (event.key === 'm' || event.key === 'M') {
+      event.preventDefault();
+      handleMuteToggle();
+    }
+  }, [handleMuteToggle]);
+
   const sliderStyle = {
-    accentColor: 'var(--color-accent-teal)',
+    accentColor: 'var(--color-accent-blue)',
   };
 
   const sliderId = `${label.toLowerCase().replace(/\s+/g, '-')}-volume`;
 
   // Meter bar styling
   const meterPercent = Math.round(meter * 100);
-  const meterColor = meter > 0.7 ? '#ef4444' : meter > 0.4 ? '#f59e0b' : 'var(--color-accent-teal)';
+  const meterColor = meter > 0.7 ? '#ef4444' : meter > 0.4 ? '#f59e0b' : 'var(--color-accent-blue)';
   // Convert RMS to dB for tooltip (approximate)
   const meterDb = meter > 0 ? (20 * Math.log10(meter)).toFixed(1) : '-∞';
 
+  // Volume icon based on level
+  const getVolumeIcon = () => {
+    if (volume === 0) return <VolumeX size={16} />;
+    if (volume < 0.3) return <Volume size={16} />;
+    if (volume < 0.7) return <Volume1 size={16} />;
+    return <Volume2 size={16} />;
+  };
+
   return (
-    <div className="mb-3 px-1 p-3 rounded-lg bg-[var(--color-background-tertiary)] hover-lift transition-all duration-200">
-      <label htmlFor={sliderId} className="block text-xs font-medium text-[var(--color-text-secondary)] mb-1">
-        {label} Volume: {Math.round(volume * 100)}%
-      </label>
-      <div className="flex items-center gap-2">
+    <div 
+      className="mb-3 px-3 py-4 rounded-lg bg-[var(--color-background-tertiary)] hover-lift transition-all duration-200 border border-[var(--color-border-primary)]/50"
+      onKeyDown={handleKeyDown}
+      tabIndex={0}
+    >
+      <div className="flex items-center justify-between mb-2">
+        <label htmlFor={sliderId} className="block text-xs font-medium text-[var(--color-text-secondary)]">
+          {label} Volume: {Math.round(volume * 100)}%
+        </label>
+        <button
+          onClick={handleMuteToggle}
+          className={`p-1 rounded transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-blue)] ${
+            volume === 0 
+              ? 'text-[var(--color-accent-red)] hover:bg-[var(--color-accent-red)]/10' 
+              : 'text-[var(--color-text-secondary)] hover:bg-[var(--color-text-secondary)]/10'
+          }`}
+          aria-label={volume === 0 ? 'Unmute' : 'Mute'}
+          title={`${volume === 0 ? 'Unmute' : 'Mute'} (M)`}
+        >
+          {getVolumeIcon()}
+        </button>
+      </div>
+      
+      <div className="flex items-center gap-3">
         <input
           id={sliderId}
           type="range"
@@ -118,7 +170,7 @@ const VolumeControl: React.FC<VolumeControlProps> = React.memo(({ label, gainNod
           value={volume}
           onChange={handleVolumeChange}
           disabled={!gainNode}
-          className={`w-full h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${FOCUS_RING_BASE} ${FOCUS_RING_OFFSET_LIGHT} focus:ring-[var(--color-accent-teal)] ${TRANSITION_FAST} hover:bg-slate-500`}
+          className={`flex-1 h-2 bg-slate-600 rounded-lg appearance-none cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${FOCUS_RING_BASE} ${FOCUS_RING_OFFSET_LIGHT} focus:ring-[var(--color-accent-blue)] ${TRANSITION_FAST} hover:bg-slate-500`}
           style={sliderStyle}
           aria-label={`${label} Volume Control`}
           aria-valuemin={0}
@@ -126,9 +178,10 @@ const VolumeControl: React.FC<VolumeControlProps> = React.memo(({ label, gainNod
           aria-valuenow={volume}
           aria-valuetext={`${Math.round(volume * 100)}%`}
         />
+        
         {audioContext && gainNode ? (
           <div
-            className="relative flex items-center h-4 w-28 bg-slate-800 rounded-md overflow-hidden shadow-inner focus:outline-none focus:ring-2 focus:ring-sky-400"
+            className="relative flex items-center h-6 w-20 bg-slate-800 rounded-md overflow-hidden shadow-inner focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-blue)]"
             tabIndex={0}
             aria-live="polite"
             aria-label={`${label} real-time volume meter`}
@@ -150,6 +203,11 @@ const VolumeControl: React.FC<VolumeControlProps> = React.memo(({ label, gainNod
         ) : (
           <span className="text-xs text-slate-500 italic ml-2">No audio device</span>
         )}
+      </div>
+      
+      {/* Keyboard shortcut hint */}
+      <div className="mt-2 text-xs text-[var(--color-text-muted)] text-center">
+        Press <kbd className="px-1 py-0.5 bg-[var(--color-background-primary)] border border-[var(--color-border-primary)] rounded text-xs">M</kbd> to mute/unmute
       </div>
     </div>
   );

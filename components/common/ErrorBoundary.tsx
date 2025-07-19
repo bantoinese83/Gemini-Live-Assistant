@@ -2,6 +2,11 @@ import React, { useEffect } from 'react';
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
+  message?: string;
+  actionLabel?: string;
+  onAction?: () => void;
+  onClose?: () => void;
+  type?: 'success' | 'error' | 'info';
 }
 
 interface ErrorBoundaryState {
@@ -93,4 +98,5 @@ const Toast: React.FC<ToastProps> = ({ message, actionLabel, onAction, onClose, 
   );
 };
 
+export { Toast };
 export default ErrorBoundary; 

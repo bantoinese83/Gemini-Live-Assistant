@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import HoverVideoPlayer from 'react-hover-video-player';
 import type { SupabaseSession } from '../types';
-import { Trash2, Volume2, MessageSquare, Download } from 'lucide-react';
+import { Trash2, Volume2, MessageSquare, Download, Search, X, Filter } from 'lucide-react';
 
 interface SessionHistoryDrawerProps {
   open: boolean;
@@ -38,6 +38,14 @@ const SessionHistoryDrawer: React.FC<SessionHistoryDrawerProps> = ({
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const lastScroll = useRef<number>(0);
+  
+  // Search and filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchFocused, setSearchFocused] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [dateFilter, setDateFilter] = useState<'all' | 'today' | 'week' | 'month'>('all');
+  const [personaFilter, setPersonaFilter] = useState<string>('all');
+  
   // Batch select mode
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -59,8 +67,76 @@ const SessionHistoryDrawer: React.FC<SessionHistoryDrawerProps> = ({
     return () => container.removeEventListener('scroll', handle);
   }, [scrollContainerRef]);
 
-  // Analytics summary
+  // Get unique personas for filter dropdown
+  const uniquePersonas = useMemo(() => {
+    const personas = [...new Set(sessions.map(s => s.persona))];
+    return personas.sort();
+  }, [sessions]);
+
+  // Filter and search logic
+  const filteredSessions = useMemo(() => {
+    let filtered = sessions;
+
+    // Date filter
+    if (dateFilter !== 'all') {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+      const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+      filtered = filtered.filter(session => {
+        const sessionDate = new Date(session.started_at);
+        switch (dateFilter) {
+          case 'today':
+            return sessionDate >= today;
+          case 'week':
+            return sessionDate >= weekAgo;
+          case 'month':
+            return sessionDate >= monthAgo;
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Persona filter
+    if (personaFilter !== 'all') {
+      filtered = filtered.filter(session => session.persona === personaFilter);
+    }
+
+    // Search query
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      filtered = filtered.filter(session => {
+        // Search in session ID
+        if (session.id.toLowerCase().includes(query)) return true;
+        
+        // Search in persona
+        if (session.persona.toLowerCase().includes(query)) return true;
+        
+        // Search in persona description
+        if (session.personaDescription?.toLowerCase().includes(query)) return true;
+        
+        // Search in preview snippet
+        if (session.previewSnippet?.toLowerCase().includes(query)) return true;
+        
+        // Search in transcripts
+        if (session.transcripts) {
+          return session.transcripts.some(transcript => 
+            transcript.text.toLowerCase().includes(query)
+          );
+        }
+        
+        return false;
+      });
+    }
+
+    return filtered;
+  }, [sessions, searchQuery, dateFilter, personaFilter]);
+
+  // Analytics summary (based on filtered results)
   const totalSessions = sessions.length;
+  const filteredSessionsCount = filteredSessions.length;
   const lastSessionDate = sessions[0]?.started_at ? new Date(sessions[0].started_at).toLocaleDateString() : null;
 
   // Keyboard accessibility for delete/confirm/cancel
@@ -71,11 +147,39 @@ const SessionHistoryDrawer: React.FC<SessionHistoryDrawerProps> = ({
     }
   };
 
+  // Keyboard shortcuts for search
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (!open) return;
+      
+      // Cmd/Ctrl + K to focus search
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        const searchInput = document.querySelector('input[placeholder*="Search sessions"]') as HTMLInputElement;
+        if (searchInput) {
+          searchInput.focus();
+        }
+      }
+      
+      // Escape to clear search or close filters
+      if (e.key === 'Escape') {
+        if (searchQuery) {
+          setSearchQuery('');
+        } else if (showFilters) {
+          setShowFilters(false);
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleGlobalKeyDown);
+    return () => document.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [open, searchQuery, showFilters]);
+
   // Select mode helpers
-  const allSelected = selectedIds.length === sessions.length && sessions.length > 0;
+  const allSelected = selectedIds.length === filteredSessions.length && filteredSessions.length > 0;
   const toggleSelectAll = () => {
     if (allSelected) setSelectedIds([]);
-    else setSelectedIds(sessions.map(s => s.id));
+    else setSelectedIds(filteredSessions.map(s => s.id));
   };
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
@@ -144,10 +248,111 @@ const SessionHistoryDrawer: React.FC<SessionHistoryDrawerProps> = ({
             <button onClick={onClose} className="text-3xl font-bold px-3 py-1 rounded hover:bg-[var(--color-background-tertiary)] focus:outline-none" aria-label="Close session history">×</button>
           </div>
         </div>
-        <div className="px-6 pt-3 pb-1 border-b border-[var(--color-border-primary)] flex items-center gap-6 text-xs text-[var(--color-text-muted)]">
-          <span>Total sessions: <span className="font-semibold text-accent-400">{totalSessions}</span></span>
-          {lastSessionDate && <span>Last session: <span className="font-semibold">{lastSessionDate}</span></span>}
+        
+        {/* Search and Filter Section */}
+        <div className="px-6 pt-3 pb-1 border-b border-[var(--color-border-primary)]">
+          {/* Search Bar */}
+          <div className="relative mb-3">
+            <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all duration-200 ${
+              searchFocused 
+                ? 'border-accent-400 bg-[var(--color-background-tertiary)] shadow-lg' 
+                : 'border-[var(--color-border-primary)] bg-[var(--color-background-primary)]'
+            }`}>
+              <Search size={18} className={`transition-colors ${searchFocused ? 'text-accent-400' : 'text-[var(--color-text-muted)]'}`} />
+              <input
+                type="text"
+                placeholder="Search sessions, personas, or transcripts..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onFocus={() => setSearchFocused(true)}
+                onBlur={() => setSearchFocused(false)}
+                className="flex-1 bg-transparent text-[var(--color-text-primary)] placeholder-[var(--color-text-muted)] focus:outline-none text-sm"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="p-1 rounded hover:bg-[var(--color-background-tertiary)] transition-colors"
+                  aria-label="Clear search"
+                >
+                  <X size={16} className="text-[var(--color-text-muted)]" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Filter Controls */}
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-4 text-xs text-[var(--color-text-muted)]">
+              <span>Total: <span className="font-semibold text-accent-400">{totalSessions}</span></span>
+              {searchQuery || dateFilter !== 'all' || personaFilter !== 'all' ? (
+                <span>Filtered: <span className="font-semibold text-accent-400">{filteredSessionsCount}</span></span>
+              ) : null}
+              {lastSessionDate && <span>Last: <span className="font-semibold">{lastSessionDate}</span></span>}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-[var(--color-text-muted)] hidden sm:inline">
+                ⌘K to search
+              </span>
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className={`flex items-center gap-1 px-2 py-1 rounded text-xs font-medium transition-colors ${
+                  showFilters || dateFilter !== 'all' || personaFilter !== 'all'
+                    ? 'bg-accent-400 text-white'
+                    : 'bg-[var(--color-background-tertiary)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)]'
+                }`}
+                aria-label="Toggle filters"
+              >
+                <Filter size={14} />
+                Filters
+              </button>
+            </div>
+          </div>
+
+          {/* Filter Panel */}
+          {showFilters && (
+            <div className="mb-3 p-3 bg-[var(--color-background-tertiary)] rounded-lg border border-[var(--color-border-primary)]">
+              <div className="flex items-center gap-4 text-xs">
+                <div className="flex items-center gap-2">
+                  <label className="text-[var(--color-text-muted)]">Date:</label>
+                  <select
+                    value={dateFilter}
+                    onChange={(e) => setDateFilter(e.target.value as any)}
+                    className="px-2 py-1 rounded bg-[var(--color-background-primary)] border border-[var(--color-border-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent-400"
+                  >
+                    <option value="all">All Time</option>
+                    <option value="today">Today</option>
+                    <option value="week">This Week</option>
+                    <option value="month">This Month</option>
+                  </select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <label className="text-[var(--color-text-muted)]">Persona:</label>
+                  <select
+                    value={personaFilter}
+                    onChange={(e) => setPersonaFilter(e.target.value)}
+                    className="px-2 py-1 rounded bg-[var(--color-background-primary)] border border-[var(--color-border-primary)] text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-accent-400"
+                  >
+                    <option value="all">All Personas</option>
+                    {uniquePersonas.map(persona => (
+                      <option key={persona} value={persona}>{persona}</option>
+                    ))}
+                  </select>
+                </div>
+                <button
+                  onClick={() => {
+                    setDateFilter('all');
+                    setPersonaFilter('all');
+                    setSearchQuery('');
+                  }}
+                  className="px-2 py-1 rounded bg-slate-600 text-white text-xs hover:bg-slate-700 transition-colors"
+                >
+                  Clear All
+                </button>
+              </div>
+            </div>
+          )}
         </div>
+        
         {selectMode && (
           <div className="px-6 py-2 border-b border-[var(--color-border-primary)] flex items-center gap-4 bg-slate-800/60">
             <span className="text-sm">{selectedIds.length} selected</span>
@@ -191,8 +396,17 @@ const SessionHistoryDrawer: React.FC<SessionHistoryDrawerProps> = ({
               <span>No sessions found.<br/>Your session history will appear here.</span>
             </div>
           )}
+          {!loading && !error && sessions.length > 0 && filteredSessions.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 text-lg text-[var(--color-text-muted)]">
+              <Search size={64} className="mb-4 text-[var(--color-text-muted)] opacity-50" />
+              <span className="text-center">
+                No sessions match your search criteria.<br/>
+                <span className="text-sm">Try adjusting your search or filters.</span>
+              </span>
+            </div>
+          )}
           <ul className="grid grid-cols-1 gap-6 pr-2">
-            {sessions.map(session => (
+            {filteredSessions.map(session => (
               <li
                 key={session.id}
                 className={`relative group bg-gradient-to-br from-[var(--color-background-tertiary)] to-[var(--color-background-secondary)] rounded-2xl p-4 shadow-lg border border-[var(--color-border-primary)] transition-all duration-200 hover:scale-[1.035] hover:shadow-2xl hover:border-accent-400 cursor-pointer overflow-hidden focus-within:ring-2 focus-within:ring-accent-400 hover:bg-[var(--color-background-tertiary-light)]`}
@@ -270,8 +484,27 @@ const SessionHistoryDrawer: React.FC<SessionHistoryDrawerProps> = ({
                       <span className="text-xs text-red-500 font-semibold">Delete?</span>
                       <button
                         className="px-2 py-1 rounded bg-red-600 text-white text-xs font-semibold hover:bg-red-700 focus:outline-none"
-                        onClick={e => { e.stopPropagation(); setDeletingId(session.id); setDeleteError(null); onDeleteSession(session.id).catch(err => setDeleteError(err.message || 'Failed to delete')); setPendingDeleteId(null); }}
-                        onKeyDown={e => handleKeyDown(e, () => { setDeletingId(session.id); setDeleteError(null); onDeleteSession(session.id).catch(err => setDeleteError(err.message || 'Failed to delete')); setPendingDeleteId(null); })}
+                        onClick={async (e) => { 
+                          e.stopPropagation(); 
+                          setDeletingId(session.id); 
+                          setDeleteError(null); 
+                          try {
+                            await onDeleteSession(session.id);
+                          } catch (err: any) {
+                            setDeleteError(err.message || 'Failed to delete');
+                          }
+                          setPendingDeleteId(null); 
+                        }}
+                        onKeyDown={e => handleKeyDown(e, async () => { 
+                          setDeletingId(session.id); 
+                          setDeleteError(null); 
+                          try {
+                            await onDeleteSession(session.id);
+                          } catch (err: any) {
+                            setDeleteError(err.message || 'Failed to delete');
+                          }
+                          setPendingDeleteId(null); 
+                        })}
                         disabled={deletingId === session.id}
                         aria-label="Confirm delete session"
                       >

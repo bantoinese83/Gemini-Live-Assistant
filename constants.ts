@@ -18,6 +18,33 @@ export const RECONNECT_DELAY_BASE_MS = 1000;
 // UI Behavior
 export const TRANSCRIPT_SCROLL_BEHAVIOR: ScrollBehavior = 'smooth';
 
+// Performance optimizations
+export const DEBOUNCE_DELAY_MS = 150; // For search and filter operations
+export const THROTTLE_DELAY_MS = 100; // For scroll and resize events
+export const ANIMATION_DURATION_MS = 200; // Standard animation duration
+export const HOVER_DELAY_MS = 300; // Delay before showing tooltips
+
+// Keyboard shortcuts
+export const KEYBOARD_SHORTCUTS = {
+  START_RECORDING: 'Space',
+  STOP_RECORDING: 'Space',
+  RESET_SESSION: 'Escape',
+  TOGGLE_VIDEO: 'V',
+  TOGGLE_SCREEN_SHARE: 'S',
+  MUTE_AUDIO: 'M',
+  SHOW_HISTORY: 'H',
+  SHOW_ANALYTICS: 'A',
+  COPY_TRANSCRIPT: 'C',
+  SCROLL_TO_BOTTOM: 'End',
+} as const;
+
+// Accessibility
+export const FOCUS_MANAGEMENT = {
+  FOCUS_RING_COLOR: 'var(--color-accent-blue)',
+  FOCUS_RING_WIDTH: '2px',
+  FOCUS_RING_OFFSET: '2px',
+} as const;
+
 // AI Bot Visualization Parameters
 export const AI_BOT_ANALYSER_FFT_SIZE = 256;
 export const AI_BOT_ANALYSER_SMOOTHING_TIME = 0.35;
@@ -55,3 +82,22 @@ export const AI_BOT_MID_BINS_START_PERCENTAGE = 0.23;
 export const AI_BOT_MID_BINS_END_PERCENTAGE = 0.58;
 export const AI_BOT_EAR_WIGGLE_INTERVAL_MS = 200; // Interval for alternating wiggle
 export const AI_BOT_EAR_WIGGLE_INTERVAL_HALF_MS = AI_BOT_EAR_WIGGLE_INTERVAL_MS / 2;
+
+// Error handling
+export const ERROR_MESSAGES = {
+  NETWORK_ERROR: 'Network connection lost. Please check your internet connection.',
+  API_ERROR: 'Unable to connect to AI service. Please try again.',
+  PERMISSION_ERROR: 'Camera or microphone access denied. Please check your browser permissions.',
+  UNKNOWN_ERROR: 'An unexpected error occurred. Please refresh the page and try again.',
+} as const;
+
+// Status messages
+export const STATUS_MESSAGES = {
+  CONNECTING: 'Connecting to AI service...',
+  CONNECTED: 'Connected and ready',
+  RECORDING: 'Recording in progress...',
+  PROCESSING: 'Processing your request...',
+  SAVING: 'Saving session...',
+  SAVED: 'Session saved successfully',
+  ERROR: 'An error occurred',
+} as const;

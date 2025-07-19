@@ -1,12 +1,10 @@
 import React from 'react';
-import { Play, Square, RotateCcw, Video, VideoOff, User2, Heart, Rocket, Smile, Laptop, Languages, Dumbbell, Mic, TrendingUp, BookOpen, Sparkles, Scale, Code } from 'lucide-react';
-import Button from './common/Button';
-import type { IconProps } from '../types'; // IconProps is used by Button for its icon elements
+import { RotateCcw, User2, Heart, Rocket, Smile, Laptop, Languages, Dumbbell, Mic, TrendingUp, BookOpen, Sparkles, Scale, Code } from 'lucide-react';
+
 import { AI_PERSONA_PRESETS } from '../types';
-import './PlayResetButton.css'; // (Create this CSS file for custom styles)
-import './GooeyToggle.css'; // Add gooey toggle styles
 import GooeySvgToggle from './GooeySvgToggle';
 import GooeyScreenShareToggle from './GooeyScreenShareToggle';
+import './PlayResetButton.css';
 
 /**
  * Props for the ControlPanel component.
@@ -73,33 +71,49 @@ const ControlPanel: React.FC<ControlPanelProps> = React.memo(({
 }) => {
   // Common disabled state for most buttons
   const isDisabledBySystem = !isInitialized || apiKeyMissing;
-  
-  // Common props for full-width buttons in this panel
-  const commonButtonProps = { size: 'md', className: 'w-full' } as const;
-  
-  // Standard size for icons within buttons
-  const iconProps: IconProps = { size: 20, "aria-hidden": true }; // Icons are decorative with button text
+
+  // Keyboard navigation for persona picker
+  const handlePersonaKeyDown = (event: React.KeyboardEvent, personaId: string) => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onPersonaChange(personaId);
+    }
+  };
 
   // Persona Picker
   const renderPersonaPicker = () => (
     <div className="mb-4">
       <label className="block text-xs font-semibold text-[var(--color-text-secondary)] mb-2">AI Persona</label>
-      <div className="flex gap-3 overflow-x-auto pb-1">
-        {AI_PERSONA_PRESETS.map((persona) => (
+      <div 
+        className="flex gap-3 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-[var(--color-border-primary)] scrollbar-track-transparent"
+        role="tablist"
+        aria-label="AI Persona Selection"
+      >
+        {AI_PERSONA_PRESETS.map((persona, index) => (
           <button
             key={persona.id}
             type="button"
-            className={`flex flex-col items-center px-3 py-2 rounded-lg border transition-all duration-200 shadow-sm min-w-[120px] max-w-[160px] focus:outline-none focus:ring-2 focus:ring-accent-500/70 bg-[var(--color-background-secondary)] hover:bg-[var(--color-background-tertiary)] hover-lift button-press focus-enhanced ${selectedPersonaId === persona.id ? 'border-accent-500 ring-2 ring-accent-500/60 scale-105' : 'border-slate-600/40'}`}
-            aria-pressed={selectedPersonaId === persona.id}
-            aria-label={persona.name}
+            role="tab"
+            tabIndex={selectedPersonaId === persona.id ? 0 : -1}
+            aria-selected={selectedPersonaId === persona.id}
+            className={`flex flex-col items-center px-3 py-2 rounded-lg border transition-all duration-200 shadow-sm min-w-[120px] max-w-[160px] focus:outline-none focus:ring-2 focus:ring-[var(--color-accent-blue)]/70 bg-[var(--color-background-secondary)] hover:bg-[var(--color-background-tertiary)] hover-lift button-press focus-enhanced ${
+              selectedPersonaId === persona.id 
+                ? 'border-[var(--color-accent-blue)] ring-2 ring-[var(--color-accent-blue)]/60 scale-105 shadow-lg' 
+                : 'border-slate-600/40 hover:border-[var(--color-accent-blue)]/40'
+            }`}
+            aria-label={`${persona.name}: ${persona.description}`}
             onClick={() => {
               console.log('Persona clicked:', persona.id, persona.name);
               onPersonaChange(persona.id);
             }}
+            onKeyDown={(e) => handlePersonaKeyDown(e, persona.id)}
           >
-            <span>{personaIcons[persona.id]}</span>
-            <span className="font-semibold text-sm mb-0.5 text-accent-400">{persona.name}</span>
+            <span className="transition-transform duration-200 group-hover:scale-110">{personaIcons[persona.id]}</span>
+            <span className="font-semibold text-sm mb-0.5 text-[var(--color-text-primary)]">{persona.name}</span>
             <span className="text-xs text-slate-400 text-center leading-tight">{persona.description}</span>
+            {selectedPersonaId === persona.id && (
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-[var(--color-accent-blue)] rounded-full border-2 border-white shadow-sm" />
+            )}
           </button>
         ))}
       </div>
@@ -119,7 +133,7 @@ const ControlPanel: React.FC<ControlPanelProps> = React.memo(({
           disabled={isDisabledBySystem || (isRecording ? false : isRecording)}
           aria-label={isRecording ? 'Stop Recording' : 'Start Recording'}
           title={isRecording ? 'Stop Recording' : 'Start Recording'}
-          className={`player-btn circle-btn button-press ${isRecording ? 'player-btn--stop' : 'player-btn--play'} ${isDisabledBySystem ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+          className={`player-btn circle-btn button-press ${isRecording ? 'player-btn--stop' : 'player-btn--play'} ${isDisabledBySystem ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:scale-105 transition-transform duration-200'}`}
         >
           {/* Buffering ring (optional, only when recording) */}
           {isRecording && <span className="buffering-ring" />}
@@ -148,7 +162,7 @@ const ControlPanel: React.FC<ControlPanelProps> = React.memo(({
           disabled={isRecording || isDisabledBySystem}
           aria-label="Reset Session"
           title="Reset Session"
-          className={`player-btn circle-btn player-btn--reset button-press ${isRecording || isDisabledBySystem ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'}`}
+          className={`player-btn circle-btn player-btn--reset button-press ${isRecording || isDisabledBySystem ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer hover:scale-105 transition-transform duration-200'}`}
         >
           <span className="reset-icon-wrapper">
             <RotateCcw size={36} className="reset-icon strong-glow" aria-hidden="true" />
